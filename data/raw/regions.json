@@ -1,0 +1,313 @@
+[
+ {
+  "id": 961,
+  "code": "01",
+  "category": "HYVINVOINTIALUE",
+  "title": {
+   "fi": "Itä-Uudenmaan hyvinvointialue",
+   "en": "East Uusimaa wellbeing services county",
+   "sv": "Östra Nylands välfärdsområde"
+  },
+  "memberOf": [
+   845
+  ]
+ },
+ {
+  "id": 966,
+  "code": "02",
+  "category": "HYVINVOINTIALUE",
+  "title": {
+   "fi": "Keski-Uudenmaan hyvinvointialue",
+   "en": "Central Uusimaa wellbeing services county",
+   "sv": "Mellersta Nylands välfärdsområde"
+  },
+  "memberOf": [
+   845
+  ]
+ },
+ {
+  "id": 969,
+  "code": "03",
+  "category": "HYVINVOINTIALUE",
+  "title": {
+   "fi": "Länsi-Uudenmaan hyvinvointialue",
+   "en": "West Uusimaa wellbeing services county",
+   "sv": "Västra Nylands välfärdsområde"
+  },
+  "memberOf": [
+   845
+  ]
+ },
+ {
+  "id": 977,
+  "code": "04",
+  "category": "HYVINVOINTIALUE",
+  "title": {
+   "fi": "Vantaan ja Keravan hyvinvointialue",
+   "en": "Vantaa and Kerava wellbeing services county",
+   "sv": "Vanda och Kervo välfärdsområde"
+  },
+  "memberOf": [
+   845
+  ]
+ },
+ {
+  "id": 978,
+  "code": "05",
+  "category": "HYVINVOINTIALUE",
+  "title": {
+   "fi": "Varsinais-Suomen hyvinvointialue",
+   "en": "Southwest Finland wellbeing services county",
+   "sv": "Egentliga Finlands välfärdsområde"
+  },
+  "memberOf": [
+   848
+  ]
+ },
+ {
+  "id": 976,
+  "code": "06",
+  "category": "HYVINVOINTIALUE",
+  "title": {
+   "fi": "Satakunnan hyvinvointialue",
+   "en": "Satakunta wellbeing services county",
+   "sv": "Satakunta välfärdsområde"
+  },
+  "memberOf": [
+   848
+  ]
+ },
+ {
+  "id": 963,
+  "code": "07",
+  "category": "HYVINVOINTIALUE",
+  "title": {
+   "fi": "Kanta-Hämeen hyvinvointialue",
+   "en": "Kanta-Häme wellbeing services county",
+   "sv": "Egentliga Tavastlands välfärdsområde"
+  },
+  "memberOf": [
+   847
+  ]
+ },
+ {
+  "id": 970,
+  "code": "08",
+  "category": "HYVINVOINTIALUE",
+  "title": {
+   "fi": "Pirkanmaan hyvinvointialue",
+   "en": "Pirkanmaa wellbeing services county",
+   "sv": "Birkalands välfärdsområde"
+  },
+  "memberOf": [
+   847
+  ]
+ },
+ {
+  "id": 975,
+  "code": "09",
+  "category": "HYVINVOINTIALUE",
+  "title": {
+   "fi": "Päijät-Hämeen hyvinvointialue",
+   "en": "Päijät-Häme wellbeing services county",
+   "sv": "Päijänne-Tavastlands välfärdsområde"
+  },
+  "memberOf": [
+   845
+  ]
+ },
+ {
+  "id": 967,
+  "code": "10",
+  "category": "HYVINVOINTIALUE",
+  "title": {
+   "fi": "Kymenlaakson hyvinvointialue",
+   "en": "Kymenlaakso wellbeing services county",
+   "sv": "Kymmenedalens välfärdsområde"
+  },
+  "memberOf": [
+   845
+  ]
+ },
+ {
+  "id": 957,
+  "code": "11",
+  "category": "HYVINVOINTIALUE",
+  "title": {
+   "fi": "Etelä-Karjalan hyvinvointialue",
+   "en": "South Karelia wellbeing services county",
+   "sv": "Södra Karelens välfärdsområde"
+  },
+  "memberOf": [
+   845
+  ]
+ },
+ {
+  "id": 959,
+  "code": "12",
+  "category": "HYVINVOINTIALUE",
+  "title": {
+   "fi": "Etelä-Savon hyvinvointialue",
+   "en": "South Savo wellbeing services county",
+   "sv": "Södra Savolax välfärdsområde"
+  },
+  "memberOf": [
+   846
+  ]
+ },
+ {
+  "id": 974,
+  "code": "13",
+  "category": "HYVINVOINTIALUE",
+  "title": {
+   "fi": "Pohjois-Savon hyvinvointialue",
+   "en": "North Savo wellbeing services county",
+   "sv": "Norra Savolax välfärdsområde"
+  },
+  "memberOf": [
+   846
+  ]
+ },
+ {
+  "id": 972,
+  "code": "14",
+  "category": "HYVINVOINTIALUE",
+  "title": {
+   "fi": "Pohjois-Karjalan hyvinvointialue",
+   "en": "North Karelia wellbeing services county",
+   "sv": "Norra Karelens välfärdsområde"
+  },
+  "memberOf": [
+   846
+  ]
+ },
+ {
+  "id": 965,
+  "code": "15",
+  "category": "HYVINVOINTIALUE",
+  "title": {
+   "fi": "Keski-Suomen hyvinvointialue",
+   "en": "Central Finland wellbeing services county",
+   "sv": "Mellersta Finlands välfärdsområde"
+  },
+  "memberOf": [
+   846
+  ]
+ },
+ {
+  "id": 958,
+  "code": "16",
+  "category": "HYVINVOINTIALUE",
+  "title": {
+   "fi": "Etelä-Pohjanmaan hyvinvointialue",
+   "en": "South Ostrobothnia wellbeing services county",
+   "sv": "Södra Österbottens välfärdsområde"
+  },
+  "memberOf": [
+   847
+  ]
+ },
+ {
+  "id": 971,
+  "code": "17",
+  "category": "HYVINVOINTIALUE",
+  "title": {
+   "fi": "Pohjanmaan hyvinvointialue",
+   "en": "Ostrobothnia wellbeing services county",
+   "sv": "Österbottens välfärdsområde"
+  },
+  "memberOf": [
+   848
+  ]
+ },
+ {
+  "id": 964,
+  "code": "18",
+  "category": "HYVINVOINTIALUE",
+  "title": {
+   "fi": "Keski-Pohjanmaan hyvinvointialue",
+   "en": "Central Ostrobothnia wellbeing services county",
+   "sv": "Mellersta Österbottens välfärdsområde"
+  },
+  "memberOf": [
+   849
+  ]
+ },
+ {
+  "id": 973,
+  "code": "19",
+  "category": "HYVINVOINTIALUE",
+  "title": {
+   "fi": "Pohjois-Pohjanmaan hyvinvointialue",
+   "en": "North Ostrobothnia wellbeing services county",
+   "sv": "Norra Österbottens välfärdsområde"
+  },
+  "memberOf": [
+   849
+  ]
+ },
+ {
+  "id": 962,
+  "code": "20",
+  "category": "HYVINVOINTIALUE",
+  "title": {
+   "fi": "Kainuun hyvinvointialue",
+   "en": "Kainuu wellbeing services county",
+   "sv": "Kajanalands välfärdsområde"
+  },
+  "memberOf": [
+   849
+  ]
+ },
+ {
+  "id": 968,
+  "code": "21",
+  "category": "HYVINVOINTIALUE",
+  "title": {
+   "fi": "Lapin hyvinvointialue",
+   "en": "Lapland wellbeing services county",
+   "sv": "Lapplands välfärdsområde"
+  },
+  "memberOf": [
+   849
+  ]
+ },
+ {
+  "id": 960,
+  "code": "90",
+  "category": "HYVINVOINTIALUE",
+  "title": {
+   "fi": "Helsingin kaupunki",
+   "en": "City of Helsinki",
+   "sv": "Helsingfors stad"
+  },
+  "memberOf": [
+   845
+  ]
+ },
+ {
+  "id": 956,
+  "code": "91",
+  "category": "HYVINVOINTIALUE",
+  "title": {
+   "fi": "Ahvenanmaa",
+   "en": "Åland",
+   "sv": "Åland"
+  },
+  "memberOf": [
+   850
+  ]
+ },
+ {
+  "id": 658,
+  "code": "358",
+  "category": "MAA",
+  "title": {
+   "fi": "Koko maa",
+   "en": "Whole country",
+   "sv": "Hela landet"
+  },
+  "memberOf": [],
+  "uri": "http://www.yso.fi/onto/kunnat/suomi"
+ }
+]

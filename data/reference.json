@@ -1,0 +1,13 @@
+{
+  "_note": "Values that do not come from an API. Each one names its source and its status. Replace 'approximate' values with checked values and set status to 'checked'.",
+  "national_new_cases_per_year": {
+    "bowel": {"value": 3700, "source": "cancer_registry", "status": "approximate"},
+    "breast": {"value": 5000, "source": "cancer_registry", "status": "approximate"},
+    "cervical": {"value": 160, "source": "cancer_registry", "status": "approximate"}
+  },
+  "nordic_five_year_survival": {
+    "bowel": {"value": null, "source": "nordcan", "status": "missing"},
+    "breast": {"value": null, "source": "nordcan", "status": "missing"},
+    "cervical": {"value": null, "source": "nordcan", "status": "missing"}
+  }
+}
