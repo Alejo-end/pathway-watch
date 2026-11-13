@@ -8,6 +8,37 @@ A decision-maker in a wellbeing services county opens Pathway Watch. In under tw
 
 The design rule: the language model explains and drafts. Code computes every number, and every sentence needs a source. If a sentence has no source, the app removes it before display.
 
+## Status and pitch headline
+
+Pathway Watch is our second entry, after the Safe Kitchen Agent. An originality test showed that a dashboard with an AI analyst is the obvious idea for this brief. So the pitch leads with two findings that a model cannot give other teams, because they come from Finnish sources and live data:
+
+1. Diagnosis takes twice as long through public care. The roadmap cites an unpublished lymphoma study on page 11.
+2. Helsinki has the lowest breast screening attendance of all counties in every year from 2019 to 2024 (Sotkanet). The three lowest areas are all in Uusimaa.
+3. Satakunta has the lowest bowel cancer survival in every year from 2019 to 2023 (Sotkanet).
+
+The first finding is one unpublished study of lymphoma patients, and the pitch says so.
+
+The app also shows a data gap view: which indicators are missing for each county, and the minimum data to collect. The brief says closing the data gap is part of the challenge.
+
+A rerun of the originality test on 13 November (three models, 10 ideas each) confirmed the pattern. The gap map, the AI analyst, early warning and the simulator appeared in every run. The two findings above appeared in none. Two fresh features build on them:
+
+1. Channel Gap (lead feature). For each county, show how many working-age people have occupational health care and how many rely only on public health centers. Combined with the roadmap's finding that diagnosis takes twice as long through public care, this is a map of who is exposed to the referral delay. Data to find first: Kela open data on occupational health care coverage by region. If it does not exist by county, use the national figure and say so.
+2. Nordic Mirror. Sweden publishes waiting times for its standardized cancer pathways (SVF) by region. The tool shows the picture Finland gets with the same measurement, and turns the data gap into a concrete proposal that matches roadmap measure 3.1.2. Data to find first: whether the Swedish regional waiting times are public and current.
+
+Do not build an early warning replay. It needs a history of waiting times by county, and we found no public source for it. A replay with invented data breaks the rule that every claim has a source.
+
+## Corrected assumptions (review on 14 November)
+
+We read the Sotkanet indicator definitions and six years of data. Four earlier statements were wrong or too strong.
+
+1. The survival figure is not a one-year value. Each year covers patients diagnosed in that year and the nine years before, followed for five years. The figure is age-standardized. So two neighboring years share most of their patients. A three-year average does not reduce noise, and the plan no longer asks for one.
+2. The headline county was wrong. Päijät-Häme is lowest only in 2024. Satakunta has the lowest bowel cancer survival in every year from 2019 to 2023, and the lowest three-year value (about 61% against 68% nationally). Kainuu is second. Use Satakunta in the demo.
+3. Survival describes care given up to ten years ago. It does not show how the pathway works today. Do not present "extra survivors" as the effect of an action now. Label the slider as an illustration of the size of the gap.
+4. The "how sure are we" marker cannot come from year-to-year agreement, because the years overlap. Take confidence intervals from the Cancer Registry statistics app. If they are not available, say "uncertainty not published".
+5. The Helsinki screening finding is stronger than we said. Helsinki has the lowest breast screening attendance in all six years from 2019 to 2024. The three lowest areas are all in Uusimaa. The cause is not known. Possible explanations are tests in private care that the program does not count, people who move often, and language barriers. Present these as questions, and ask the mentors.
+6. The "twice as long through public care" finding is one unpublished study of lymphoma patients. Quote it as that. Do not apply it to all cancers.
+7. The rule "low survival with normal screening points to referral or treatment" compares whole counties, not patients. Call the result "a question to investigate", never a located cause.
+
 ## What AstraZeneca asks
 
 1. Identify the gap: differences in access to cancer care or in outcomes.
@@ -103,7 +134,7 @@ https://sotkanet.fi/rest/1.1/regions
 https://sotkanet.fi/rest/1.1/json?indicator=3627&years=2024&genders=total
 ```
 
-First result (fetched on 13 November 2026, Åland excluded): five-year bowel cancer survival in 2024 ranges from 63% in Päijät-Häme to 74% in Keski-Uusimaa. The national value is 68%. The lowest and highest counties change from year to year. For example, Satakunta was lowest in 2022 and 2023. So small county numbers make single years noisy, and the app needs to show that.
+First result (fetched on 13 November 2026, Åland excluded): five-year bowel cancer survival in 2024 ranges from 63% in Päijät-Häme to 74% in Keski-Uusimaa. Each value covers ten years of diagnoses. Satakunta is lowest in every year from 2019 to 2023. The national value is 68%. The lowest and highest counties change from year to year. For example, Satakunta was lowest in 2022 and 2023. So small county numbers make single years noisy, and the app needs to show that.
 
 Other sources:
 
@@ -119,11 +150,11 @@ No public source that we found gives waiting times per county. That missing data
 
 ### Step 1: find the gap
 
-For each county and indicator, compute the difference from the national value. Use a three-year average to reduce noise. Show a "how sure are we" marker:
+For each county and indicator, compute the difference from the national value. Do not average years to reduce noise, because the yearly values share most of their patients. Show a "how sure are we" marker:
 
-1. High: the county is outside the national value in all three years.
-2. Medium: two of three years.
-3. Low: one year only, or data is missing.
+1. Published: the Cancer Registry gives a confidence interval, and the app shows it.
+2. Persistent: the county is on the same side of the national value in most years from 2019 to 2024. The years overlap, so this is weak evidence.
+3. Not published: no interval is available, and the app says so.
 
 ### Step 2: locate the gap in the pathway
 
@@ -136,7 +167,7 @@ Use the indicators that belong to each pathway step:
 | Diagnosis | Stage at diagnosis, where it exists |
 | Start of treatment | No public regional waiting times. Survival differences with normal screening point here |
 
-A simple rule for the demo: low survival with low screening points to detection. Low survival with normal screening points to referral, diagnosis or treatment. The app says "most likely" and shows the confidence. It never claims a cause.
+A simple rule for the demo: low survival with low screening raises a question about detection. Low survival with normal screening raises a question about referral, diagnosis or treatment. The rule compares counties, not patients. The app calls the result "a question to investigate" and never claims a cause.
 
 Be careful with timing. Colorectal screening started nationally in 2022, and the five-year survival figures describe patients diagnosed years earlier. Do not claim that screening explains survival in the same year.
 
@@ -151,7 +182,7 @@ Map each located gap to a roadmap measure (see the table above). Each recommenda
 
 ### Step 4: simulate
 
-A slider shows the result of one change: the county reaches the national survival level. Extra five-year survivors = new cases per year × (national survival − county survival). New cases per county come from the Cancer Registry. If the registry does not give counts per county, use a clearly marked estimate and say so.
+A slider illustrates the size of the gap: the county at the national survival level. Survival describes care given up to ten years ago, so the app labels the result "an illustration, not a forecast". Extra five-year survivors = new cases per year × (national survival − county survival). New cases per county come from the Cancer Registry. If the registry does not give counts per county, use a clearly marked estimate and say so.
 
 ## Architecture
 
@@ -206,10 +237,10 @@ Questions for the mentors:
 ## Demo script (two minutes)
 
 1. "You lead a wellbeing services county. Where do your cancer patients fall behind?"
-2. Pick Päijät-Häme. The map and the three sentences appear.
+2. Pick Satakunta. The map and the three sentences appear.
 3. Show the chart against the national value and the Nordic level.
 4. Show the first action: standardized referral criteria (roadmap measure 2.5.2), with the Nordic models it follows.
-5. Move the slider. It shows the extra survivors for a county at the national level.
+5. Show the Helsinki screening finding, with the possible explanations as open questions.
 6. Show the "data we are missing" box, and end on the follow-up project with a county.
 
 ## Constraints

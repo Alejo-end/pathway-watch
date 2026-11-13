@@ -86,7 +86,27 @@ def load(raw: Path = RAW) -> Data:
         fetched[ind] = doc.get("fetched", "")
         titles[ind] = doc.get("title") or INDICATORS[ind].short
     reference = json.loads((raw.parent / "reference.json").read_text())
+    _apply_nordcan(reference)
     return Data(values, names, population, fetched, titles, reference)
+
+
+def _apply_nordcan(reference: dict) -> None:
+    """Replace the approximate values in reference.json with NORDCAN values where they exist."""
+    from . import nordcan
+
+    nc = nordcan.load()
+    for site in ("bowel", "breast", "cervical"):
+        fi = nordcan.combined(nc, site, "finland")
+        if fi:
+            reference["national_new_cases_per_year"][site] = {
+                "value": fi["cases"], "source": "nordcan", "status": "checked",
+                "note": f"NORDCAN, average {nc.get('period')}",
+            }
+        bench = nordcan.benchmark(nc, site)
+        reference["nordic_five_year_survival"][site] = {
+            "value": bench["nordic"], "source": "nordcan",
+            "status": "checked" if bench["nordic"] is not None else "missing", "benchmark": bench,
+        }
 
 
 def short_name(fi: str) -> str:
@@ -233,7 +253,7 @@ def estimated_cases(data: Data, cancer: str, county: str) -> dict:
         "value": round(ref["value"] * pop / nat),
         "status": "estimate",
         "source": ref["source"],
-        "method": f"{ref['value']} national cases per year ({ref['status']}) x county population share {pop / nat:.1%}",
+        "method": f"{ref['value']} new cases per year in Finland ({ref.get('note') or ref['status']}) x county population share {pop / nat:.1%}",
     }
 
 
@@ -293,7 +313,7 @@ def mortality_facts(data: Data, mort, cancer: str, county: str) -> list[Fact]:
     m = mort.smr("all", county)
     out.append(Fact(
         "mort.target",
-        f"{name} has {m.deaths_per_year:g} cancer deaths per year on average in {m.years[0]}–{m.years[-1]}. "
+        f"{name} has {round(m.deaths_per_year)} cancer deaths per year on average in {m.years[0]}–{m.years[-1]}. "
         f"The Goal 3 target of 10% fewer deaths means {round(m.deaths_per_year * 0.1)} fewer per year",
         round(m.deaths_per_year * 0.1), "deaths", "statfin_mortality",
     ))

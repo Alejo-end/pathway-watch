@@ -1,0 +1,159 @@
+{
+ "_note": "Read by hand from figure 5 (page 12) and figure 6 (page 13) of the RCC report, and checked against a 220 dpi render of both pages.",
+ "source": "rcc_svf_2025",
+ "measure": "Share of patients who start treatment within the lead time of their standardized care pathway (SVF), %. The lead time runs from well-founded suspicion of cancer to the start of the first treatment. Shown for the region where the pathway started.",
+ "target": 80,
+ "years": [
+  2024,
+  2025
+ ],
+ "national": {
+  "2024": {
+   "share": 45,
+   "n": 49845
+  },
+  "2025": {
+   "share": 47,
+   "n": 47994
+  }
+ },
+ "regions": {
+  "Blekinge": {
+   "2024": 33,
+   "2025": 40,
+   "n2025": 842
+  },
+  "Dalarna": {
+   "2024": 40,
+   "2025": 43,
+   "n2025": 1602
+  },
+  "Gotland": {
+   "2024": 59,
+   "2025": 62,
+   "n2025": 367
+  },
+  "Gävleborg": {
+   "2024": 49,
+   "2025": 50,
+   "n2025": 1217
+  },
+  "Halland": {
+   "2024": 49,
+   "2025": 56,
+   "n2025": 1042
+  },
+  "Jämtland": {
+   "2024": 34,
+   "2025": 38,
+   "n2025": 621
+  },
+  "Jönköping": {
+   "2024": 43,
+   "2025": 46,
+   "n2025": 2118
+  },
+  "Kalmar": {
+   "2024": 52,
+   "2025": 51,
+   "n2025": 1435
+  },
+  "Kronoberg": {
+   "2024": 40,
+   "2025": 49,
+   "n2025": 1195
+  },
+  "Norrbotten": {
+   "2024": 49,
+   "2025": 48,
+   "n2025": 814
+  },
+  "Skåne": {
+   "2024": 36,
+   "2025": 37,
+   "n2025": 6681
+  },
+  "Stockholm": {
+   "2024": 56,
+   "2025": 60,
+   "n2025": 9424
+  },
+  "Sörmland": {
+   "2024": 48,
+   "2025": 51,
+   "n2025": 1629
+  },
+  "Uppsala": {
+   "2024": 53,
+   "2025": 44,
+   "n2025": 1952
+  },
+  "Värmland": {
+   "2024": 55,
+   "2025": 54,
+   "n2025": 1603
+  },
+  "Västerbotten": {
+   "2024": 41,
+   "2025": 51,
+   "n2025": 674
+  },
+  "Västernorrland": {
+   "2024": 45,
+   "2025": 49,
+   "n2025": 1153
+  },
+  "Västmanland": {
+   "2024": 41,
+   "2025": 49,
+   "n2025": 1472
+  },
+  "Västra Götaland": {
+   "2024": 39,
+   "2025": 39,
+   "n2025": 8129
+  },
+  "Örebro": {
+   "2024": 49,
+   "2025": 44,
+   "n2025": 1697
+  },
+  "Östergötland": {
+   "2024": 31,
+   "2025": 35,
+   "n2025": 2327
+  }
+ },
+ "by_cancer_2025": {
+  "bowel": {
+   "svf": "Tjock- och ändtarmscancer",
+   "share": 48,
+   "n": 5894
+  },
+  "breast": {
+   "svf": "Bröstcancer",
+   "share": 53,
+   "n": 9406
+  },
+  "cervical": {
+   "svf": "Livmoderhalscancer",
+   "share": 30,
+   "n": 276
+  },
+  "lung": {
+   "svf": "Lungcancer",
+   "share": 35,
+   "n": 3442
+  },
+  "pancreas": {
+   "svf": "Bukspottkörtel- och gallvägscancer",
+   "share": 47,
+   "n": 1734
+  },
+  "liver": {
+   "svf": "Levercancer",
+   "share": 34,
+   "n": 494
+  }
+ }
+}

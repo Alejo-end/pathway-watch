@@ -11,12 +11,12 @@ STATIC_SOURCES: dict[str, dict] = {
     "strategy": {
         "title": "Kansallinen syöpästrategia 2026–2035, goals page (Goal 3)",
         "url": None,
-        "note": "Goal 3: ensure equal and effective cancer care. File from the AstraZeneca challenge resource pack. Add the public link when the team has it.",
+        "note": "Strategic goals and indicators on page 5. Goal 3: ensure equal and effective cancer care. Goal 2 includes 80% screening attendance in every county. File Kansallinen_syopastrategia_2026_2035_FINAL.pdf from the AstraZeneca resource pack.",
     },
     "roadmap": {
         "title": "Kansallisen syöpästrategian toimeenpanon tiekartta 2026–2031",
         "url": None,
-        "note": "Implementation roadmap, from the AstraZeneca challenge resource pack. In Finnish. Measure numbers are quoted as written.",
+        "note": "Implementation roadmap, file Kansallinen_syopastrategia_toimeenpanon_tiekartta_2026_2031.pdf from the AstraZeneca resource pack. In Finnish. Measure numbers and pages are quoted as written.",
     },
     "thl_21_2016": {
         "title": "THL guidance 21/2016 on monitoring access to cancer care",
@@ -43,6 +43,11 @@ STATIC_SOURCES: dict[str, dict] = {
         "url": "https://stat.fi/en/statistics/ksyyt",
         "api": "https://pxdata.stat.fi/PxWeb/api/v1/en/StatFin/ksyyt/13u5.px",
         "note": "Open PxWeb API. The app age-adjusts deaths by indirect standardization with five-year age groups.",
+    },
+    "rcc_svf_2025": {
+        "title": "Regionala cancercentrum i samverkan, Standardiserade vårdförlopp: annual report 2025, appendix 1 (2026-03-27)",
+        "url": "https://cancercentrum.se/download/18.7c07b08019d24db18e31c22a/1774867469204/%C3%85rsapport%20%C3%B6verenskommelse%202025%20J%C3%A4mlik%20och%20effektiv%20cancerv%C3%A5rd%20med%20kortare%20v%C3%A4ntetider_bilaga%201%20SVF.pdf",
+        "note": "Sweden's lead-time results per region (figure 5, page 12) and per pathway (figure 6, page 13). Data from the national waiting-time database at SKR.",
     },
     "statfi_map": {
         "title": "Statistics Finland, wellbeing services county boundaries 2024",

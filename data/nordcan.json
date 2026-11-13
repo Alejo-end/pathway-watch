@@ -1,0 +1,201 @@
+{
+ "_note": "Copied by hand from the NORDCAN 2.0 fact sheets (data version 9.6.1, read 2026-11-13). Cases are new cases per year, 2020-2024. surv5 is five-year relative survival in %, age-standardized with ICSS, diagnosed 2020-2024. Male breast cancer has no survival value in NORDCAN.",
+ "source": "nordcan",
+ "period": "2020–2024",
+ "url": "https://nordcan.iarc.who.int/en/factsheet/{site}/{country}",
+ "sites": {
+  "bowel": {
+   "slug": "colorectal-520",
+   "finland-246": {
+    "male": {
+     "cases": 2222,
+     "surv5": 69.6
+    },
+    "female": {
+     "cases": 1863,
+     "surv5": 72.8
+    }
+   },
+   "sweden-752": {
+    "male": {
+     "cases": 3985,
+     "surv5": 71.7
+    },
+    "female": {
+     "cases": 3486,
+     "surv5": 72.2
+    }
+   },
+   "norway-578": {
+    "male": {
+     "cases": 2467,
+     "surv5": 72.2
+    },
+    "female": {
+     "cases": 2305,
+     "surv5": 73.9
+    }
+   }
+  },
+  "breast": {
+   "slug": "breast-180",
+   "finland-246": {
+    "male": {
+     "cases": 32,
+     "surv5": null
+    },
+    "female": {
+     "cases": 5059,
+     "surv5": 92.0
+    }
+   },
+   "sweden-752": {
+    "male": {
+     "cases": 71,
+     "surv5": null
+    },
+    "female": {
+     "cases": 7856,
+     "surv5": 93.4
+    }
+   },
+   "norway-578": {
+    "male": {
+     "cases": 33,
+     "surv5": null
+    },
+    "female": {
+     "cases": 4005,
+     "surv5": 91.6
+    }
+   }
+  },
+  "cervical": {
+   "slug": "cervix-uteri-190",
+   "finland-246": {
+    "female": {
+     "cases": 200,
+     "surv5": 69.8
+    }
+   },
+   "sweden-752": {
+    "female": {
+     "cases": 509,
+     "surv5": 78.4
+    }
+   },
+   "norway-578": {
+    "female": {
+     "cases": 327,
+     "surv5": 77.1
+    }
+   }
+  },
+  "lung": {
+   "slug": "lung-160",
+   "finland-246": {
+    "male": {
+     "cases": 1780,
+     "surv5": 17.9
+    },
+    "female": {
+     "cases": 1214,
+     "surv5": 30.8
+    }
+   },
+   "sweden-752": {
+    "male": {
+     "cases": 1999,
+     "surv5": 31.3
+    },
+    "female": {
+     "cases": 2527,
+     "surv5": 38.9
+    }
+   },
+   "norway-578": {
+    "male": {
+     "cases": 1753,
+     "surv5": 30.8
+    },
+    "female": {
+     "cases": 1701,
+     "surv5": 38.4
+    }
+   }
+  },
+  "pancreas": {
+   "slug": "pancreas-130",
+   "finland-246": {
+    "male": {
+     "cases": 712,
+     "surv5": 12.1
+    },
+    "female": {
+     "cases": 691,
+     "surv5": 13.6
+    }
+   },
+   "sweden-752": {
+    "male": {
+     "cases": 866,
+     "surv5": 17.3
+    },
+    "female": {
+     "cases": 852,
+     "surv5": 17.9
+    }
+   },
+   "norway-578": {
+    "male": {
+     "cases": 524,
+     "surv5": 18.7
+    },
+    "female": {
+     "cases": 497,
+     "surv5": 20.0
+    }
+   }
+  },
+  "liver": {
+   "slug": "liver-110",
+   "finland-246": {
+    "male": {
+     "cases": 412,
+     "surv5": 14.4
+    },
+    "female": {
+     "cases": 179,
+     "surv5": 12.5
+    }
+   },
+   "sweden-752": {
+    "male": {
+     "cases": 590,
+     "surv5": 25.8
+    },
+    "female": {
+     "cases": 275,
+     "surv5": 23.6
+    }
+   },
+   "norway-578": {
+    "male": {
+     "cases": 249,
+     "surv5": 24.5
+    },
+    "female": {
+     "cases": 147,
+     "surv5": 25.9
+    }
+   }
+  }
+ },
+ "goal3_targets": {
+  "_source": "strategy",
+  "_note": "Percentage points to add to Finland's five-year survival, against the NORDCAN 2023 level.",
+  "lung": 14,
+  "pancreas": 6,
+  "liver": 14
+ }
+}

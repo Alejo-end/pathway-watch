@@ -105,3 +105,63 @@ def test_recommendations_cite_known_measures(data):
         for cancer in CANCERS:
             for r in recommend(data, A.locate(data, cancer, county), county):
                 assert r["measure"] in MEASURES and r["source"] == "roadmap"
+
+
+def test_mortality_national_smr_is_100_and_population_adds_up():
+    from backend.mortality import Mortality
+    m = Mortality()
+    assert m.smr("all", NATIONAL).smr == 100
+    for y in m.years:
+        counties = sum(sum(m.pop[c][str(y)].values()) for c in m.pop if c != NATIONAL)
+        assert counties == sum(m.pop[NATIONAL][str(y)].values())
+
+
+def test_byar_interval_contains_the_ratio():
+    from backend.mortality import byar
+    low, high = byar(120, 100)
+    assert low < 120 < high and low > 95
+
+
+def test_mortality_facts_cite_statfin(data):
+    from backend.mortality import Mortality
+    facts = A.mortality_facts(data, Mortality(), "bowel", "06")
+    assert {f.source for f in facts} == {"statfin_mortality"}
+    assert any(f.id == "mort.lung" for f in facts)
+
+
+def test_nordcan_benchmark_needs_both_sweden_and_norway():
+    from backend import nordcan
+    nc = {"sites": {"x": {
+        "finland-246": {"male": {"cases": 100, "surv5": 60.0}, "female": {"cases": 300, "surv5": 70.0}},
+        "sweden-752": {"female": {"cases": 10, "surv5": 80.0}},
+        "norway-578": None}}}
+    assert nordcan.combined(nc, "x", "finland") == {"cases": 400, "surv5": 67.5}
+    b = nordcan.benchmark(nc, "x")
+    assert b["nordic"] is None and b["sweden"] == 80.0
+    nc["sites"]["x"]["norway-578"] = {"female": {"cases": 10, "surv5": 70.0}}
+    b = nordcan.benchmark(nc, "x")
+    assert b["nordic"] == 75.0 and b["gap"] == -7.5
+
+
+def test_channel_share_and_facts(data):
+    from backend.channel import channel, channel_facts
+    c = channel(data, "09")
+    assert c["public_share"] == round(100 * c["public_visits"] / (c["public_visits"] + c["occupational_visits"]), 1)
+    facts = channel_facts(data, "09")
+    assert {f.source for f in facts} <= set(data.sources())
+
+
+def test_svf_file_is_complete():
+    import json
+    svf = json.loads((A.ROOT / "data" / "svf_sweden.json").read_text())
+    assert len(svf["regions"]) == 21
+    assert all(0 < r["2025"] <= 100 for r in svf["regions"].values())
+
+
+def test_headlines_cite_known_sources():
+    from backend.app import data as appdata, headlines
+    h = headlines()
+    sources = appdata.sources()
+    assert all(s["source"] in sources for s in h["screening"])
+    assert h["nordic"] and all(b["gap"] is not None for b in h["nordic"])
+    assert h["mirror"]["regions"] == 21

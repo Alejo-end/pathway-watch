@@ -1,6 +1,6 @@
 """Map a located gap to roadmap measures. Each recommendation names its measure and its evidence.
 
-Pages are None until a team member reads the roadmap page and fills them in.
+Pages refer to the measure headings in the roadmap PDF (page numbers as printed).
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ MEASURES: dict[str, dict] = {
         "nordic": "Denmark (Kræftpakkeforløb), Sweden (SVF) and Norway (Pakkeforløp)",
         "steps": ["later"],
         "actor": "County, with FICAN",
-        "page": None,
+        "page": 52,
     },
     "3.1.2": {
         "action": "Publish the national care pathway for this cancer with defined target access times, and report the county against them.",
@@ -23,15 +23,15 @@ MEASURES: dict[str, dict] = {
         "nordic": None,
         "steps": ["later"],
         "actor": "FICAN and THL",
-        "page": None,
+        "page": 56,
     },
     "2.5.1": {
-        "action": "Add doctor resources in public primary care, where the first contact happens.",
+        "action": "Add doctor resources in public primary care, for example by making the personal doctor model national.",
         "detail": "The roadmap reports that diagnosis took twice as long through public care as through private care in a study of lymphoma patients (page 11).",
         "nordic": None,
         "steps": ["later"],
         "actor": "County",
-        "page": None,
+        "page": 51,
     },
     "1.3.1": {
         "action": "Raise screening attendance in language groups with targeted, community-based communication.",
@@ -39,7 +39,7 @@ MEASURES: dict[str, dict] = {
         "nordic": None,
         "steps": ["detection"],
         "actor": "County, with THL",
-        "page": 11,
+        "page": 33,
     },
     "2.4.5": {
         "action": "Use screening register data together with THL to find the groups that do not attend.",
@@ -47,7 +47,7 @@ MEASURES: dict[str, dict] = {
         "nordic": None,
         "steps": ["detection"],
         "actor": "County and THL",
-        "page": None,
+        "page": 50,
     },
     "1.3.2": {
         "action": "Run the national communication plan on cancer symptoms locally, so people seek care early.",
@@ -55,15 +55,23 @@ MEASURES: dict[str, dict] = {
         "nordic": None,
         "steps": ["detection"],
         "actor": "THL and the county",
-        "page": None,
+        "page": 34,
+    },
+    "3.1.4": {
+        "action": "Define national quality and effectiveness targets and indicators, so that every county reports how many patients start treatment within the target time.",
+        "detail": "Sweden reports this share for every region each year. Finland reports it for none.",
+        "nordic": "Sweden (SVF lead-time target: 80% of patients within the lead time)",
+        "steps": ["data"],
+        "actor": "FICAN and THL",
+        "page": 58,
     },
     "3.2.1": {
-        "action": "Give the THL Cancer Registry the legal basis to collect waiting times and stage at diagnosis per county.",
-        "detail": "Without this data, nobody can tell referral, diagnosis and treatment delays apart.",
+        "action": "Create the legal basis for a national cancer care quality register at the THL Cancer Registry.",
+        "detail": "Without county data on stage, waiting times and treatment, nobody can tell referral, diagnosis and treatment delays apart.",
         "nordic": None,
         "steps": ["data"],
         "actor": "Ministry of Social Affairs and Health, THL",
-        "page": None,
+        "page": 59,
     },
 }
 

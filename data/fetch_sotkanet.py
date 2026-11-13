@@ -33,6 +33,9 @@ INDICATORS = {
     5643: (2017, 2024),  # cancer index, age-standardized
     5093: (2017, 2025),  # special refunds for cancer medicines
     127: (2024, 2024),   # population 31.12.
+    2371: (2020, 2024),  # occupational health physician visits per 1000 aged 15-64
+    293: (2020, 2024),   # public primary care physician visits per 1000 aged 15-64
+    692: (2020, 2024),   # Kela reimbursement for private physician visits, % of population
 }
 
 

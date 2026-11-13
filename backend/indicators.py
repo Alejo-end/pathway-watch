@@ -27,6 +27,9 @@ INDICATORS: dict[int, Indicator] = {
     3620: Indicator(3620, "Cervical screening attendance", "cervical", "screening", "detection"),
     5643: Indicator(5643, "Cancer index, age-standardized", None, "context", None, unit="index"),
     5093: Indicator(5093, "Special refunds for cancer medicines, age-standardized", None, "context", None),
+    2371: Indicator(2371, "Occupational health physician visits per 1000 aged 15-64", None, "channel", "referral", unit="per 1000"),
+    293: Indicator(293, "Public primary care physician visits per 1000 aged 15-64", None, "channel", "referral", unit="per 1000"),
+    692: Indicator(692, "Kela-reimbursed private physician visits, % of population", None, "channel", "referral"),
 }
 
 CANCERS = {
