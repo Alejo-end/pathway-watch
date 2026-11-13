@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import asdict
 from functools import lru_cache
 from pathlib import Path
 
@@ -13,19 +14,23 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 
 from . import analysis as A
-from . import nordcan as NC
-from .analyst import extra_facts, summarize
-from .channel import channel_facts, channel_table
-from .recommend import MEASURES
-from .indicators import CANCERS, INDICATORS, NATIONAL
-from .mortality import GOAL3, LABELS, Mortality
-from .recommend import recommend
+from . import facts as F
+from . import nordcan
+from . import sotkanet
+from .analyst import summarize
+from .channel import channel_table
+from .indicators import CANCERS, NATIONAL, has_county_survival
+from .mortality import GOAL3, LABELS, all_years, shared as shared_mortality
+from .recommend import MEASURES, recommend
 
 ROOT = Path(__file__).resolve().parent.parent
 WEB = ROOT / "web"
-data = A.load()
-mort = Mortality()
-nc = NC.load()
+SCREENING_TARGET = 80  # % attendance in every county, national cancer strategy, page 5
+GOAL3_SURVIVAL = ["lung", "pancreas", "liver"]  # the poor-prognosis cancers of Goal 3, indicator 1
+
+data = sotkanet.load()
+mort = shared_mortality()
+nc = nordcan.load()
 svf = json.loads((ROOT / "data" / "svf_sweden.json").read_text())
 app = FastAPI(title="Pathway Watch")
 
@@ -44,11 +49,14 @@ def geojson():
 def meta():
     return {
         "counties": [{"code": c, "name": data.names[c]} for c in data.counties],
-        "cancers": {k: {"label": v["label"], "survival": v["survival"], "screening": v["screening"]} for k, v in CANCERS.items()},
-        "indicators": {i: {"short": x.short, "kind": x.kind, "cancer": x.cancer} for i, x in INDICATORS.items()},
+        "cancers": CANCERS,
         "sources": data.sources(),
     }
 
+
+# The three map layers share one shape per county: name, latest, year, gap, direction.
+# `direction` is below (worse than Finland), above or near. `confidence` is present only
+# where the layer computes one.
 
 @app.get("/api/map/{indicator}")
 def map_layer(indicator: int):
@@ -57,7 +65,7 @@ def map_layer(indicator: int):
     out = {}
     for c in data.counties:
         g = A.gap(data, indicator, c)
-        s = A.series(data, indicator, c)
+        s = data.series(indicator, c)
         out[c] = {
             "name": data.names[c],
             "latest": s[max(s)] if s else None,
@@ -66,13 +74,12 @@ def map_layer(indicator: int):
             "direction": g.direction,
             "confidence": g.confidence,
         }
-    nat = A.series(data, indicator, NATIONAL)
-    return {"indicator": indicator, "source": f"sotkanet:{indicator}", "national": nat, "counties": out}
+    return {"indicator": indicator, "source": f"sotkanet:{indicator}", "counties": out}
 
 
 @app.get("/api/mortality-map/{cause}")
 def mortality_layer(cause: str):
-    """Same shape as /api/map. `gap` is 100 minus the SMR, so a negative gap is worse, as for survival."""
+    """`gap` is 100 minus the SMR, so a negative gap is worse, as for survival."""
     if not mort.ok or cause not in LABELS:
         raise HTTPException(404, "unknown cause")
     out = {}
@@ -87,144 +94,45 @@ def mortality_layer(cause: str):
     return {"indicator": f"mortality:{cause}", "label": LABELS[cause], "source": "statfin_mortality", "counties": out}
 
 
-@app.get("/api/headlines")
-def headlines():
-    """Four national findings for the top of the page. Every number is computed here and cites a source."""
-    t = channel_table(data)
-    most = min(t["counties"], key=lambda c: t["counties"][c]["rank"])
-    screening = []
-    for cancer in ("bowel", "breast"):
-        ind = CANCERS[cancer]["screening"]
-        latest = {c: A.series(data, ind, c) for c in data.counties}
-        year = max(max(v) for v in latest.values() if v)
-        vals = {c: v[year] for c, v in latest.items() if year in v}
-        low = min(vals, key=vals.get)
-        screening.append({"cancer": CANCERS[cancer]["label"], "year": year, "lowest": data.names[low],
-                          "value": vals[low], "below_target": sum(1 for v in vals.values() if v < 80),
-                          "n": len(vals), "source": f"sotkanet:{ind}"})
-    nordic = sorted((NC.benchmark(nc, s) | {"label": LABELS[s]} for s in ("lung", "liver", "cervical", "pancreas", "bowel", "breast")),
-                    key=lambda b: b["gap"] if b["gap"] is not None else 0)
-    return {
-        "channel": {"national": t["national"]["public_share"], "year": t["national"]["year"],
-                    "most": data.names[most], "most_share": t["counties"][most]["public_share"]},
-        "screening": screening,
-        "nordic": [b for b in nordic if b["gap"] is not None][:4],
-        "mirror": {"sweden": svf["national"]["2025"]["share"], "target": svf["target"],
-                   "regions": len(svf["regions"]), "finland_counties": len(data.counties)},
-    }
-
-
 @app.get("/api/channel-map")
 def channel_layer():
-    """Same shape as /api/map. `gap` is Finland's public share minus the county's, so more public reliance is negative."""
+    """`gap` is Finland's public share minus the county's, so more reliance on the public channel is negative."""
     t = channel_table(data)
     nat = t["national"]["public_share"]
     out = {}
     for c, v in t["counties"].items():
         gap = round(nat - v["public_share"], 1)
         out[c] = {"name": data.names[c], "latest": v["public_share"], "year": v["year"], "gap": gap,
-                  "direction": "near" if abs(gap) < 2 else ("below" if gap < 0 else "above"), "confidence": "high",
+                  "direction": "near" if abs(gap) < 2 else ("below" if gap < 0 else "above"),
                   "public": v["public_visits"], "occupational": v["occupational_visits"]}
     return {"indicator": "channel", "label": "Public channel share", "source": "sotkanet:293", "national": nat, "counties": out}
 
 
-@lru_cache(maxsize=256)
-def _briefing(cancer: str, county: str) -> dict:
-    spec = CANCERS[cancer]
-    pathway = A.locate(data, cancer, county)
-    recs = recommend(data, pathway, county)
-    facts = (A.facts_for(data, cancer, county) + A.mortality_facts(data, mort, cancer, county)
-             + channel_facts(data, county) + extra_facts(pathway, recs))
-    summary = summarize(data, cancer, county, pathway, recs, facts)
-    surv = A.gap(data, spec["survival"], county)
-    scr = A.gap(data, spec["screening"], county)
-    cases = A.estimated_cases(data, cancer, county)
-    nordic = data.reference["nordic_five_year_survival"][cancer]
-    nat_series = A.series(data, spec["survival"], NATIONAL)
-    return {
-        "county": {"code": county, "name": data.names[county]},
-        "cancer": {"key": cancer, "label": spec["label"]},
-        "summary": summary,
-        "facts": {f.id: A.as_dict(f) for f in facts},
-        "gaps": {"survival": A.as_dict(surv), "screening": A.as_dict(scr)},
-        "pathway": A.as_dict(pathway),
-        "recommendations": recs,
-        "chart": {
-            "indicator": spec["survival"],
-            "source": f"sotkanet:{spec['survival']}",
-            "county": A.series(data, spec["survival"], county),
-            "national": nat_series,
-            "nordic": nordic,
-            "screening_indicator": spec["screening"],
-            "screening_county": A.series(data, spec["screening"], county),
-            "screening_national": A.series(data, spec["screening"], NATIONAL),
-        },
-        "simulation": {
-            "cases": cases,
-            "county_survival": surv.county_values[-1] if surv.years else None,
-            "national_survival": surv.national_values[-1] if surv.years else None,
-            "year": surv.years[-1] if surv.years else None,
-            "extra_survivors_full": A.simulate(
-                cases["value"], surv.county_values[-1] if surv.years else None,
-                surv.national_values[-1] if surv.years else None,
-            ),
-        },
-        "goal3": goal3(cancer, county),
-        "channel": channel_block(county),
-        "mirror": mirror(cancer),
-        "missing": missing(cancer, nordic, cases),
-    }
-
-
-def channel_block(county: str) -> dict | None:
+@app.get("/api/headlines")
+def headlines():
+    """Four national findings for the top of the page, each with the ID of its source."""
     t = channel_table(data)
-    c = t["counties"].get(county)
-    if not c:
-        return None
-    return {**c, "n": t["n"], "national": t["national"], "facts": ["channel.share", "channel.visits", "channel.rank", "channel.roadmap"]}
-
-
-def mirror(cancer: str) -> dict:
-    """Nordic Mirror: the waiting-time picture Sweden publishes per region, and what Finland has instead."""
-    regions = sorted(({"region": r, **v} for r, v in svf["regions"].items()), key=lambda r: r["2025"])
+    most = min(t["counties"], key=lambda c: t["counties"][c]["rank"])
+    screening = []
+    for cancer in ("bowel", "breast"):
+        ind = CANCERS[cancer]["screening"]
+        by_county = {c: data.series(ind, c) for c in data.counties}
+        year = max(max(v) for v in by_county.values() if v)
+        vals = {c: v[year] for c, v in by_county.items() if year in v}
+        low = min(vals, key=vals.get)
+        screening.append({"cancer": CANCERS[cancer]["label"], "year": year, "lowest": data.names[low],
+                          "value": vals[low], "target": SCREENING_TARGET,
+                          "below_target": sum(1 for v in vals.values() if v < SCREENING_TARGET),
+                          "n": len(vals), "source": f"sotkanet:{ind}"})
+    gaps = [nordcan.benchmark(nc, s) | {"label": LABELS[s]} for s in nc["sites"]]
     return {
-        "measure": svf["measure"], "target": svf["target"], "national": svf["national"],
-        "regions": regions, "cancer": svf["by_cancer_2025"].get(cancer), "source": svf["source"],
-        "finland_counties": len(data.counties),
-        "proposal": [{"measure": m, **{k: MEASURES[m][k] for k in ("action", "page", "actor")}} for m in ("3.1.2", "3.1.4")],
+        "channel": {"national": t["national"]["public_share"], "year": t["national"]["year"],
+                    "most": data.names[most], "most_share": t["counties"][most]["public_share"]},
+        "screening": screening,
+        "nordic": sorted((b for b in gaps if b["gap"] is not None), key=lambda b: b["gap"])[:4],
+        "mirror": {"sweden": svf["national"]["2025"]["share"], "target": svf["target"],
+                   "regions": len(svf["regions"]), "finland_counties": len(data.counties)},
     }
-
-
-def goal3(cancer: str, county: str) -> dict | None:
-    if not mort.ok:
-        return None
-    rows = [{**A.as_dict(mort.smr(c, county)), "label": LABELS[c], "fact": f"mort.{c}"} for c in dict.fromkeys(GOAL3 + [cancer])]
-    survival = [{**NC.benchmark(nc, s), "label": LABELS[s]} for s in dict.fromkeys(["lung", "pancreas", "liver", cancer])]
-    return {"rows": rows, "target_fact": "mort.target", "source": "statfin_mortality", "survival": survival}
-
-
-def missing(cancer: str, nordic: dict, cases: dict) -> list[dict]:
-    out = [
-        {"what": "Waiting times from referral to diagnosis and to treatment, per county",
-         "why": "Goal 3 indicator 3 asks for treatment within target times. No public source gives them per county.",
-         "measure": "3.2.1", "source": "thl_21_2016"},
-        {"what": "Stage at diagnosis per county",
-         "why": "Stage would show whether detection or later steps cause the gap.",
-         "measure": "3.2.1", "source": "cancer_registry"},
-    ]
-    out.append({"what": "Five-year survival for lung, pancreatic and liver cancer per county",
-                "why": "Goal 3 indicator 1 measures survival for these cancers. The app shows their age-adjusted mortality instead.",
-                "measure": "3.1.4", "source": "strategy"})
-    unread = [LABELS[s].lower() for s in dict.fromkeys(["lung", "pancreas", "liver", cancer]) if NC.benchmark(nc, s)["nordic"] is None or NC.benchmark(nc, s)["finland"] is None]
-    if unread:
-        out.append({"what": "NORDCAN survival values not read yet: " + ", ".join(unread),
-                    "why": "The NORDCAN data service went into maintenance during the reading. The values go into data/nordcan.json.",
-                    "measure": None, "source": "nordcan"})
-    if cases["value"] is not None:  # the national count is checked, the county split is not
-        out.append({"what": "New cases per year per county",
-                    "why": "The simulation uses an estimate from the national count and the population share.",
-                    "measure": None, "source": "cancer_registry"})
-    return out
 
 
 @app.get("/api/county/{county}")
@@ -234,3 +142,120 @@ def county_briefing(county: str, cancer: str = "bowel"):
     if cancer not in CANCERS:
         raise HTTPException(404, "unknown cancer")
     return _briefing(cancer, county)
+
+
+@lru_cache(maxsize=256)
+def _briefing(cancer: str, county: str) -> dict:
+    benchmark = nordcan.benchmark(nc, cancer)
+    finland = nordcan.combined(nc, cancer, "finland")
+    cases = A.estimated_cases(data, county, finland["cases"] if finland else None,
+                              f"NORDCAN, average {nc['period']}", "nordcan")
+    pathway = A.locate(data, cancer, county)
+    recs = recommend(data, pathway, county)
+    if pathway.step == "national":
+        recs[0] = recs[0] | _counties_to_invite_first(cancer)
+    facts = (F.survival_and_screening_facts(data, cancer, county) + F.mortality_facts(data, mort, cancer, county)
+             + F.nordic_facts(cancer, benchmark) + F.channel_facts(data, county) + F.pathway_and_action_facts(pathway, recs))
+    view = _county_survival_view(cancer, county, cases) if has_county_survival(cancer) else _mortality_view(cancer, county, cases, benchmark)
+    return {
+        "county": {"code": county, "name": data.names[county]},
+        "cancer": {"key": cancer, "label": CANCERS[cancer]["label"]},
+        "summary": summarize(data, cancer, county, pathway, recs, facts),
+        "facts": {f.id: asdict(f) for f in facts},
+        "pathway": asdict(pathway),
+        "recommendations": recs,
+        "nordic": benchmark,
+        **view,
+        "goal3": _goal3(cancer, county),
+        "channel": _channel(county),
+        "mirror": _mirror(cancer),
+        "missing": _missing(cancer, cases),
+    }
+
+
+def _county_survival_view(cancer: str, county: str, cases: dict) -> dict:
+    """Chart and simulation for a cancer with county survival: the county against Finland."""
+    ind = CANCERS[cancer]["survival"]
+    g = A.gap(data, ind, county)
+    own, nat = (g.county_values[-1], g.national_values[-1]) if g.years else (None, None)
+    return {
+        "chart": {"kind": "survival", "source": f"sotkanet:{ind}",
+                  "county": data.series(ind, county), "national": data.series(ind, NATIONAL)},
+        "simulation": {"mode": "county", "cases": cases, "start": own, "goal": nat,
+                       "period": g.years[-1] if g.years else None, "source": f"sotkanet:{ind}", "target": None,
+                       "steps": A.simulation_steps(cases["value"], own, nat)},
+    }
+
+
+def _mortality_view(cancer: str, county: str, cases: dict, benchmark: dict) -> dict:
+    """Chart and simulation for a cancer without county survival: county deaths against expected,
+    and what the Nordic survival level would mean for the county's yearly patients."""
+    return {
+        "chart": {"kind": "smr", "source": "statfin_mortality", "county": all_years(mort, cancer, county)} if mort.ok else None,
+        "simulation": {"mode": "nordic", "cases": cases, "start": benchmark["finland"], "goal": benchmark["nordic"],
+                       "period": benchmark["period"], "source": "nordcan", "target": benchmark["target"],
+                       "steps": A.simulation_steps(cases["value"], benchmark["finland"], benchmark["nordic"])},
+    }
+
+
+def _counties_to_invite_first(cancer: str) -> dict:
+    """Up to five counties with significantly more deaths than their age structure predicts, worst first."""
+    if not mort.ok:
+        return {}
+    worse = [m for m in (mort.smr(cancer, c) for c in data.counties) if m.direction == "worse" and m.confidence == "high"]
+    worse.sort(key=lambda m: -m.smr)
+    if not worse:
+        return {}
+    return {"priority": [{"county": data.names[m.county], "smr": m.smr, "low": m.low, "high": m.high} for m in worse[:5]],
+            "priority_source": "statfin_mortality"}
+
+
+def _channel(county: str) -> dict | None:
+    t = channel_table(data)
+    c = t["counties"].get(county)
+    return {**c, "n": t["n"], "national": t["national"]} if c else None
+
+
+def _mirror(cancer: str) -> dict:
+    """Nordic Mirror: the waiting-time picture Sweden publishes per region, and the roadmap measures
+    that would give Finland the same."""
+    regions = sorted(({"region": r, **v} for r, v in svf["regions"].items()), key=lambda r: r["2025"])
+    return {
+        "target": svf["target"], "national": svf["national"],
+        "regions": regions, "cancer": svf["by_cancer_2025"].get(cancer), "source": svf["source"],
+        "finland_counties": len(data.counties),
+        "proposal": [{"measure": m, **{k: MEASURES[m][k] for k in ("action", "page", "actor")}} for m in ("3.1.2", "3.1.4")],
+    }
+
+
+def _goal3(cancer: str, county: str) -> dict | None:
+    if not mort.ok:
+        return None
+    rows = [{**asdict(mort.smr(c, county)), "label": LABELS[c]} for c in dict.fromkeys(GOAL3 + [cancer])]
+    survival = [{**nordcan.benchmark(nc, s), "label": LABELS[s]} for s in dict.fromkeys(GOAL3_SURVIVAL + [cancer])]
+    return {"rows": rows, "target_fact": "mort.target", "source": "statfin_mortality", "survival": survival}
+
+
+def _missing(cancer: str, cases: dict) -> list[dict]:
+    """What no public source gives, and the roadmap measure that would produce it."""
+    out = [
+        {"what": "Waiting times from referral to diagnosis and to treatment, per county",
+         "why": "Goal 3 indicator 3 asks for treatment within target times. No public source gives them per county.",
+         "measure": "3.1.4", "source": "thl_21_2016"},
+        {"what": "Stage at diagnosis per county",
+         "why": "Stage would show whether detection or later steps cause the gap.",
+         "measure": "3.2.1", "source": "cancer_registry"},
+        {"what": "Five-year survival for lung, pancreatic and liver cancer per county",
+         "why": "Goal 3 indicator 1 measures survival for these cancers. The app shows their age-adjusted mortality instead.",
+         "measure": "3.1.4", "source": "strategy"},
+    ]
+    no_level = [LABELS[s].lower() for s in dict.fromkeys(GOAL3_SURVIVAL + [cancer]) if nordcan.benchmark(nc, s)["gap"] is None]
+    if no_level:
+        out.append({"what": "Nordic survival level for " + ", ".join(no_level),
+                    "why": "data/nordcan.json lacks a value for Finland, Sweden or Norway. The NORDCAN fact sheets have them.",
+                    "measure": None, "source": "nordcan"})
+    if cases["status"] == "estimate":
+        out.append({"what": "New cases per year per county",
+                    "why": "The simulation splits the national count by population share.",
+                    "measure": None, "source": "cancer_registry"})
+    return out

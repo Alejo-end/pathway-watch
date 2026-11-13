@@ -10,13 +10,13 @@ from __future__ import annotations
 
 import json
 import math
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from pathlib import Path
+
+from .indicators import NATIONAL, WINDOW
 
 ROOT = Path(__file__).resolve().parent.parent
 FILE = ROOT / "data" / "raw" / "statfin_mortality.json"
-WINDOW = 3
-NATIONAL = "358"
 
 LABELS = {
     "all": "All cancers",
@@ -97,6 +97,28 @@ class Mortality:
                    round(obs / len(self.years), 1), yearly, direction, confidence)
 
 
+_SHARED: "Mortality | None" = None
+
+
+def shared() -> "Mortality":
+    """One loaded instance for the whole process."""
+    global _SHARED
+    if _SHARED is None:
+        _SHARED = Mortality()
+    return _SHARED
+
+
+def all_years(m: "Mortality", cause: str, county: str) -> dict[int, float]:
+    """SMR for every year with data, for the chart. Single years are noisy for one county."""
+    years = sorted({int(y) for y in m.cd[NATIONAL][m.causes["all"][0]]})
+    out = {}
+    for y in years:
+        e = m._expected(cause, county, y)
+        if e:
+            out[y] = round(100 * m._observed(cause, county, y) / e)
+    return out
+
+
 def byar(observed: float, expected: float) -> tuple[float, float]:
     """95% confidence interval of the SMR (Byar's approximation of the exact Poisson interval)."""
     if expected <= 0:
@@ -106,7 +128,3 @@ def byar(observed: float, expected: float) -> tuple[float, float]:
     o1 = o + 1
     high = o1 * (1 - 1 / (9 * o1) + 1.96 / (3 * math.sqrt(o1))) ** 3
     return 100 * low / expected, 100 * high / expected
-
-
-def as_dict(s: Smr) -> dict:
-    return asdict(s)

@@ -4,122 +4,174 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Pathway Watch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400..900&display=swap" rel="stylesheet">
 <style>
+/* Paper white, true black, one cobalt for action and "better", one signal red for "worse". */
 :root {
-  --bg: #f6f5f1; --panel: #ffffff; --ink: #1d232b; --muted: #5f6b78; --line: #e2e0d9;
-  --accent: #1f5f8b; --below: #b2452e; --below-soft: #e9b8a8; --above: #2f7a6a; --above-soft: #b6d9cf;
-  --near: #dcdad3; --nodata: #f0efea; --warn-bg: #fff6e0; --warn-line: #e5c46b; --chip: #e8eef4;
+  --bg: #ffffff; --panel: #ffffff; --ink: #000000; --muted: #5c5c5c; --line: #d9d9d9; --rule: #000000;
+  --accent: #0a3cdc; --on-accent: #ffffff; --chip: #eef1fd;
+  --below: #d4003c; --below-soft: #f3aabd; --above: #0a3cdc; --above-soft: #aebcf4;
+  --near: #e4e4e4; --nodata: #f4f4f4; --warn-bg: #f4f4f4; --warn-line: #000000;
+  --font: "Schibsted Grotesk", "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #14181d; --panel: #1c2128; --ink: #e8eaed; --muted: #9aa5b1; --line: #2d343d;
-    --accent: #7fb6dd; --below: #e0795f; --below-soft: #6b3a2f; --above: #6cc2ad; --above-soft: #2c5a50;
-    --near: #3a4049; --nodata: #23282f; --warn-bg: #2e2816; --warn-line: #8a7230; --chip: #26313d;
+    --bg: #000000; --panel: #000000; --ink: #ffffff; --muted: #a6a6a6; --line: #333333; --rule: #ffffff;
+    --accent: #6f8dff; --on-accent: #000000; --chip: #141b3a;
+    --below: #ff4d7d; --below-soft: #7a1f3a; --above: #6f8dff; --above-soft: #263a8c;
+    --near: #2e2e2e; --nodata: #1a1a1a; --warn-bg: #141414; --warn-line: #ffffff;
   }
 }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-header { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; padding: 16px 24px; border-bottom: 1px solid var(--line); background: var(--panel); }
-header h1 { font-size: 20px; margin: 0; letter-spacing: -0.01em; }
-header .tag { color: var(--muted); font-size: 13px; }
-header .controls { margin-left: auto; display: flex; gap: 12px; flex-wrap: wrap; }
-select { font: inherit; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
-main { display: grid; grid-template-columns: minmax(280px, 380px) 1fr; gap: 20px; padding: 20px 24px; max-width: 1280px; margin: 0 auto; }
-@media (max-width: 860px) { main { grid-template-columns: 1fr; padding: 16px; } header { padding: 12px 16px; } }
-.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
-.panel h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 10px; font-weight: 600; }
-.stack { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
-#map svg { width: 100%; height: auto; max-height: 520px; display: block; margin: 0 auto; }
-#map path { stroke: var(--panel); stroke-width: .6; cursor: pointer; transition: opacity .15s; }
-#map path:hover { opacity: .8; }
-#map path.sel { stroke: var(--ink); stroke-width: 2; }
-#map path.low { stroke-dasharray: 2 2; stroke: var(--muted); }
-.legend { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 12px; color: var(--muted); margin-top: 8px; }
-.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 4px; }
-.maptoggle { display: flex; gap: 6px; margin-bottom: 8px; }
-.maptoggle button { font: inherit; font-size: 13px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; }
-.maptoggle button.on { background: var(--accent); color: var(--panel); border-color: var(--accent); }
-#tip { position: fixed; pointer-events: none; background: var(--ink); color: var(--panel); font-size: 12px; padding: 6px 8px; border-radius: 6px; display: none; z-index: 5; }
-.title-row { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
-.title-row h3 { margin: 0; font-size: 22px; }
-.badge { font-size: 12px; padding: 2px 8px; border-radius: 999px; background: var(--chip); color: var(--ink); white-space: nowrap; }
-.badge.high { background: var(--below); color: #fff; } .badge.medium { background: var(--warn-line); color: #1d232b; }
-ol.summary { margin: 12px 0 0; padding-left: 22px; font-size: 17px; line-height: 1.55; }
-ol.summary li { margin-bottom: 8px; }
-sup.cite { font-size: 11px; margin-left: 2px; }
-sup.cite a { color: var(--accent); text-decoration: none; background: var(--chip); padding: 0 4px; border-radius: 4px; margin-left: 2px; }
-.writer { font-size: 12px; color: var(--muted); margin-top: 4px; }
-.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.45 var(--font); -webkit-font-smoothing: antialiased; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+a { color: var(--accent); }
+
+/* Top bar: wordmark and what the tool is for. */
+.topbar { display: flex; align-items: baseline; gap: 8px 20px; flex-wrap: wrap; padding: 14px 28px; border-bottom: 3px solid var(--rule); }
+.topbar .mark { font-weight: 800; font-size: 20px; letter-spacing: -0.02em; }
+.topbar .tag { color: var(--muted); font-size: 14px; }
+
+/* National findings: an inverted band, four columns. */
+.headlines { display: grid; grid-template-columns: repeat(4, 1fr); background: var(--ink); color: var(--bg); }
+.hl-card { padding: 18px 28px 20px; font-size: 13.5px; line-height: 1.4; border-left: 1px solid color-mix(in srgb, var(--bg) 25%, transparent); }
+.hl-card:first-child { border-left: 0; }
+.hl-card .k { font-size: 13px; font-weight: 600; opacity: .7; }
+.hl-card .n { font-size: clamp(26px, 2.6vw, 38px); font-weight: 800; letter-spacing: -0.03em; line-height: 1.05; margin: 2px 0 8px; }
+.hl-card sup.cite a { color: var(--bg); }
+@media (max-width: 1100px) { .headlines { grid-template-columns: 1fr 1fr; } .hl-card:nth-child(3) { border-left: 0; } .hl-card { border-top: 1px solid color-mix(in srgb, var(--bg) 25%, transparent); } }
+@media (max-width: 600px) { .headlines { grid-template-columns: 1fr; } .hl-card { border-left: 0; padding: 14px 16px; } }
+
+main { display: grid; grid-template-columns: minmax(300px, 400px) minmax(0, 1fr); gap: 0 48px; padding: 0 28px 40px; max-width: 1360px; margin: 0 auto; }
+@media (max-width: 900px) { main { grid-template-columns: 1fr; padding: 0 16px 32px; } .topbar { padding: 12px 16px; } }
+.stack { min-width: 0; }
+@media (min-width: 901px) { .mapcol { position: sticky; top: 0; align-self: start; max-height: 100vh; overflow: auto; } }
+
+/* A section starts with a heavy rule and a plain heading. No cards. */
+.panel { border-top: 3px solid var(--rule); padding: 14px 0 34px; }
+.panel h2 { font-size: 21px; font-weight: 700; letter-spacing: -0.015em; line-height: 1.2; margin: 0 0 14px; max-width: 34ch; }
+.panel h2 sup.cite { font-weight: 400; }
+.panel.first { border-top: 0; padding-top: 28px; }
+
+/* The question, as a sentence you can edit: "Bowel cancer in Päijät-Häme". */
+.query { font-size: clamp(34px, 5.2vw, 76px); font-weight: 800; letter-spacing: -0.04em; line-height: 1.02; margin: 0 0 18px; }
+.query select { font: inherit; letter-spacing: inherit; color: var(--accent); background: transparent; border: 0; border-bottom: .07em solid var(--accent);
+  border-radius: 0; padding: 0 .1em 0 0; margin: 0; appearance: none; -webkit-appearance: none; cursor: pointer; max-width: 100%; }
+.query select:hover { background: var(--chip); }
+.query option { font-size: 16px; font-weight: 400; color: #000; }
+#sizer { position: absolute; visibility: hidden; white-space: pre; }
+
+/* The care pathway drawn as a line with four stops. The likely stops are marked. */
+.route { display: grid; grid-template-columns: repeat(4, 1fr); margin: 6px 0 4px; }
+.stop { position: relative; padding-top: 26px; font-size: 14px; font-weight: 600; color: var(--muted); padding-right: 10px; }
+.stop::before { content: ""; position: absolute; left: 0; right: 0; top: 8px; height: 6px; background: var(--ink); }
+.stop:last-child::before { right: auto; width: 0; }
+.stop::after { content: ""; position: absolute; left: 0; top: 0; width: 22px; height: 22px; border-radius: 50%; background: var(--bg); border: 5px solid var(--ink); }
+.stop.hit { color: var(--below); }
+.stop.hit::after { background: var(--below); border-color: var(--below); }
+.stop.seg::before { background: var(--below); }
+.stop.warn { color: var(--ink); }
+.stop.warn::after { border-color: var(--below); }
+.verdict { font-size: 15px; margin: 12px 0 0; }
+.verdict b { font-weight: 700; }
+.badge { display: inline-block; font-size: 13px; font-weight: 600; padding: 2px 10px; border-radius: 999px; border: 2px solid var(--ink); margin-left: 6px; white-space: nowrap; }
+.badge.high { background: var(--ink); color: var(--bg); }
+
+ol.summary { margin: 22px 0 0; padding: 0; list-style: none; counter-reset: s; font-size: clamp(18px, 1.5vw, 22px); line-height: 1.38; font-weight: 500; letter-spacing: -0.01em; max-width: 62ch; }
+ol.summary li { counter-increment: s; position: relative; padding: 12px 0 12px 44px; border-top: 1px solid var(--line); }
+ol.summary li::before { content: counter(s); position: absolute; left: 0; top: 12px; font-weight: 800; }
+sup.cite { font-size: .62em; margin-left: 1px; font-weight: 600; }
+sup.cite a { text-decoration: none; margin-left: 2px; }
+sup.cite a:hover { text-decoration: underline; }
+.writer, .caveat, .removed { font-size: 13.5px; color: var(--muted); max-width: 78ch; }
+.writer { margin-top: 12px; }
+.caveat { margin: 6px 0 0; }
+
+/* First action: the one filled block on the page. */
+.action { background: var(--accent); color: var(--on-accent); padding: 22px 24px 24px; }
+.action .what { font-size: clamp(22px, 2.3vw, 32px); font-weight: 800; letter-spacing: -0.025em; line-height: 1.12; margin: 12px 0 12px; max-width: 30ch; }
+.action .meta { font-size: 14px; opacity: .9; max-width: 78ch; }
+.action .detail { max-width: 70ch; }
+.action sup.cite a { color: var(--on-accent); }
+.action .line { background: var(--on-accent); color: var(--accent); }
+/* A roadmap measure number, shown like a line number on a departure board. */
+.line { display: inline-block; min-width: 52px; text-align: center; font-weight: 800; font-size: 15px; padding: 3px 8px; border-radius: 6px; background: var(--accent); color: var(--on-accent); }
+.line.none { background: var(--near); color: var(--ink); }
+.rows { list-style: none; margin: 0; padding: 0; }
+.rows li { display: grid; grid-template-columns: 64px 1fr; gap: 4px 14px; padding: 12px 0; border-bottom: 1px solid var(--line); align-items: start; }
+.rows li > div { max-width: 78ch; }
+.rows small { display: block; color: var(--muted); font-size: 13.5px; margin-top: 2px; }
+.more { margin-top: 4px; }
+
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 40px; }
 @media (max-width: 1100px) { .grid2 { grid-template-columns: 1fr; } }
 #chart svg { width: 100%; height: auto; display: block; }
-#chart text { fill: var(--muted); font-size: 11px; }
-.action { border-left: 4px solid var(--accent); padding-left: 12px; }
-.action .what { font-size: 17px; font-weight: 600; margin: 4px 0 6px; }
-.action .meta { font-size: 13px; color: var(--muted); }
-.more { margin-top: 12px; font-size: 14px; }
-.more li { margin-bottom: 4px; }
-.sim .big { font-size: 40px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; }
-.sim input[type=range] { width: 100%; accent-color: var(--accent); }
-.sim .note { font-size: 12px; color: var(--muted); }
-.missing { background: var(--warn-bg); border-color: var(--warn-line); }
-.missing ul { margin: 0; padding-left: 18px; }
-.missing li { margin-bottom: 6px; }
-.missing small { color: var(--muted); display: block; }
-.sources ol { margin: 0; padding-left: 22px; font-size: 13px; }
-.sources li { margin-bottom: 4px; }
-.sources li:target, .sources li.hl { background: var(--chip); border-radius: 4px; }
-.sources a { color: var(--accent); }
-table.g3 { width: 100%; border-collapse: collapse; font-size: 14px; }
-table.g3 th, table.g3 td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
-table.g3 th { font-size: 12px; color: var(--muted); font-weight: 600; }
-table.g3 td.num { font-variant-numeric: tabular-nums; }
-.pill { font-size: 12px; padding: 1px 8px; border-radius: 999px; }
-.pill.worse { background: var(--below); color: #fff; } .pill.better { background: var(--above); color: #fff; } .pill.near { background: var(--near); }
-.target { margin-top: 10px; font-size: 15px; }
-.bignum { font-size: 34px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; }
-.split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 10px 0; }
+#chart text { fill: var(--muted); font-size: 11px; font-family: var(--font); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--muted); margin-top: 10px; }
+.legend i { display: inline-block; width: 12px; height: 12px; vertical-align: -1px; margin-right: 5px; }
+
+.sim .big, .bignum { font-size: clamp(52px, 6vw, 88px); font-weight: 800; letter-spacing: -0.05em; line-height: .95; }
+.sim input[type=range] { width: 100%; accent-color: var(--accent); margin: 16px 0 8px; height: 28px; }
+.sim .note { font-size: 13.5px; color: var(--muted); }
+
+/* Map */
+#map { padding-top: 28px; border-top: 0; }
+#map svg { width: 100%; height: auto; max-height: 56vh; display: block; margin: 0 auto; }
+#map path { stroke: var(--bg); stroke-width: .8; cursor: pointer; }
+#map path:hover { opacity: .75; }
+#map path.sel { stroke: var(--ink); stroke-width: 3; }
+#map path.low { stroke-dasharray: 2 2; stroke: var(--muted); }
+/* One control, four choices: a segmented switch. */
+.maptoggle { display: grid; grid-template-columns: repeat(4, 1fr); border: 2px solid var(--ink); border-radius: 999px; padding: 2px; margin-bottom: 14px; }
+.maptoggle button { font: inherit; font-size: 13.5px; font-weight: 600; line-height: 1.1; padding: 8px 4px; border: 0; border-radius: 999px; background: transparent; color: var(--ink); cursor: pointer; }
+.maptoggle button.on { background: var(--ink); color: var(--bg); }
+.maptoggle button:disabled { cursor: not-allowed; }
+#tip { position: fixed; pointer-events: none; background: var(--ink); color: var(--bg); font-size: 13px; padding: 8px 10px; display: none; z-index: 5; }
+
+table.g3 { width: 100%; border-collapse: collapse; font-size: 15px; }
+table.g3 td.num, .bars > span:nth-child(3n) { font-variant-numeric: tabular-nums; }
+table.g3 th, table.g3 td { text-align: left; padding: 9px 10px 9px 0; border-bottom: 1px solid var(--line); }
+table.g3 th { font-size: 13px; color: var(--muted); font-weight: 600; border-bottom: 2px solid var(--ink); }
+.pill { font-size: 13px; font-weight: 600; padding: 1px 9px; border-radius: 999px; white-space: nowrap; }
+.pill.worse { background: var(--below); color: #fff; } .pill.better { background: var(--above); color: var(--on-accent); } .pill.near { background: var(--near); }
+.target { margin-top: 14px; font-size: 17px; font-weight: 500; max-width: 70ch; }
+.sub { font-size: 16px; font-weight: 700; margin: 26px 0 8px; }
+.split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 40px; margin: 12px 0; }
 @media (max-width: 700px) { .split { grid-template-columns: 1fr; } }
-.bar { height: 14px; border-radius: 3px; background: var(--chip); position: relative; overflow: hidden; }
+.bar { height: 14px; background: var(--near); position: relative; overflow: hidden; }
 .bar > span { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent); }
 .bar.pub > span { background: var(--below); }
-.bars { display: grid; grid-template-columns: 120px 1fr 36px; gap: 3px 8px; align-items: center; font-size: 12px; }
-.bars .t { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--ink); opacity: .6; }
-.empty { border: 1px dashed var(--muted); background: transparent; }
-.lead { font-size: 15px; margin: 6px 0 10px; }
-.caveat { font-size: 13px; color: var(--muted); margin: 6px 0 0; }
-.removed { font-size: 12px; color: var(--muted); }
-.headlines { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 16px 24px 0; max-width: 1280px; margin: 0 auto; }
-@media (max-width: 1100px) { .headlines { grid-template-columns: 1fr 1fr; } }
-@media (max-width: 600px) { .headlines { grid-template-columns: 1fr; padding: 12px 16px 0; } }
-.hl-card { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--below); border-radius: 10px; padding: 12px 14px; font-size: 13px; }
-.hl-card .n { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; }
-.hl-card .k { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 4px; }
-@media (min-width: 861px) { .mapcol { position: sticky; top: 12px; align-self: start; } }
-footer { text-align: center; color: var(--muted); font-size: 12px; padding: 16px; }
+.bars { display: grid; grid-template-columns: 124px 1fr 40px; gap: 4px 10px; align-items: center; font-size: 13px; }
+.bars .t { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--ink); }
+.empty { border: 2px dashed var(--muted); background: transparent; }
+.lead { font-size: 17px; font-weight: 500; margin: 0 0 14px; max-width: 70ch; }
+.sources ol { margin: 0; padding-left: 26px; font-size: 13.5px; max-width: 90ch; }
+.sources li { margin-bottom: 6px; padding: 1px 4px; }
+.sources li.hl { background: var(--chip); }
+footer { border-top: 3px solid var(--rule); color: var(--muted); font-size: 13px; padding: 16px 28px 28px; max-width: 90ch; }
 </style>
 </head>
 <body>
-<header>
-  <h1>Pathway Watch</h1>
-  <span class="tag">Where cancer patients in your county fall behind, and what to do first</span>
-  <div class="controls">
-    <select id="cancer" aria-label="Cancer"></select>
-    <select id="county" aria-label="County"></select>
-  </div>
+<header class="topbar">
+  <span class="mark">Pathway Watch</span>
+  <span class="tag">Where cancer patients in a county fall behind, and what to do first</span>
 </header>
-<section class="headlines" id="headlines" aria-label="National findings"></section>
+<section class="headlines" id="headlines" aria-label="Findings for Finland"></section>
 <main>
   <div class="stack mapcol">
     <section class="panel" id="map">
-      <h2>Finland's wellbeing services counties</h2>
-      <div class="maptoggle"><button data-k="survival" class="on">Survival gap</button><button data-k="screening">Screening gap</button><button data-k="mortality">Mortality</button><button data-k="channel">Public channel</button></div>
+      <div class="maptoggle" role="group" aria-label="Map layer"><button data-k="survival" class="on">Survival</button><button data-k="screening">Screening</button><button data-k="mortality">Mortality</button><button data-k="channel">Public route</button></div>
       <div id="mapsvg"></div>
       <div class="legend" id="legend"></div>
     </section>
   </div>
   <div class="stack">
-    <section class="panel">
-      <div class="title-row"><h3 id="cname">…</h3><span class="badge" id="conf"></span></div>
+    <section class="panel first">
+      <h1 class="query"><select id="cancer" aria-label="Cancer"></select> in <select id="county" aria-label="County"></select></h1>
+      <div class="route" id="route" aria-hidden="true"></div>
+      <p class="verdict" id="verdict"></p>
       <ol class="summary" id="summary"></ol>
       <div class="writer" id="writer"></div>
       <p class="caveat" id="caveats"></p>
@@ -127,11 +179,11 @@ footer { text-align: center; color: var(--muted); font-size: 12px; padding: 16px
     <section class="panel">
       <h2>First action</h2>
       <div class="action" id="action"></div>
-      <div class="more"><strong>Then</strong><ul id="more"></ul></div>
+      <div class="more" id="morewrap"><ul class="rows" id="more"></ul></div>
     </section>
     <div class="grid2">
       <section class="panel" id="chart"><h2 id="charttitle">Five-year survival</h2><div id="chartsvg"></div><div class="legend" id="chartlegend"></div></section>
-      <section class="panel sim">
+      <section class="panel sim" id="sim">
         <h2>If the county reached the national level</h2>
         <div class="big" id="simbig">–</div>
         <div id="simtext"></div>
@@ -140,19 +192,19 @@ footer { text-align: center; color: var(--muted); font-size: 12px; padding: 16px
       </section>
     </div>
     <section class="panel" id="channel">
-      <h2>Channel Gap: who depends on the slower public route to diagnosis</h2>
+      <h2>Who depends on the slower public route to a diagnosis</h2>
       <div id="channelbody"></div>
     </section>
     <section class="panel" id="mirror">
-      <h2>Nordic Mirror: the waiting-time picture Sweden publishes and Finland does not</h2>
+      <h2>The waiting-time picture Sweden publishes and Finland does not</h2>
       <div id="mirrorbody"></div>
     </section>
     <section class="panel missing">
-      <h2>Data we are missing, and the minimum to collect</h2>
-      <ul id="missing"></ul>
+      <h2>Data that is missing, and the measure that would collect it</h2>
+      <ul class="rows" id="missing"></ul>
     </section>
     <section class="panel" id="goal3">
-      <h2>Goal 3 of the national cancer strategy: cancer mortality</h2>
+      <h2>Cancer deaths against the national strategy's Goal 3</h2>
       <div id="goal3body"></div>
     </section>
     <section class="panel sources">
@@ -161,8 +213,8 @@ footer { text-align: center; color: var(--muted); font-size: 12px; padding: 16px
     </section>
   </div>
 </main>
-<footer>Public aggregate data only. The language model rewords computed facts. A sentence without a source is removed before display.</footer>
-<div id="tip"></div>
+<footer>Public aggregate data only. Code computes every number, and each one links to its source. In the three summary sentences, a sentence is removed before display if it cites no fact, or if it holds a number that its facts do not.</footer>
+<div id="tip"></div><span id="sizer" class="query"></span>
 <script>
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -177,6 +229,8 @@ async function init() {
   $("#cancer").value = state.cancer; $("#county").value = state.county;
   $("#cancer").onchange = e => { state.cancer = e.target.value; save(); render(); };
   $("#county").onchange = e => { state.county = e.target.value; save(); render(); };
+  window.addEventListener("resize", fitSelects);
+  if (document.fonts) document.fonts.ready.then(fitSelects);
   document.querySelectorAll(".maptoggle button").forEach(b => b.onclick = () => {
     state.layer = b.dataset.k; document.querySelectorAll(".maptoggle button").forEach(x => x.classList.toggle("on", x === b)); drawMap();
   });
@@ -184,7 +238,25 @@ async function init() {
   render();
 }
 
-async function render() { await Promise.all([drawMap(), drawBriefing()]); }
+// Lung cancer has no county survival or screening data, so those map layers are switched off for it.
+function syncLayers() {
+  const noCounty = META.cancers[state.cancer].survival == null;
+  document.querySelectorAll(".maptoggle button").forEach(b => {
+    const off = noCounty && (b.dataset.k === "survival" || b.dataset.k === "screening");
+    b.disabled = off; b.style.opacity = off ? .4 : 1;
+  });
+  if (noCounty && (state.layer === "survival" || state.layer === "screening")) state.layer = "mortality";
+  document.querySelectorAll(".maptoggle button").forEach(x => x.classList.toggle("on", x.dataset.k === state.layer));
+}
+// A native select is as wide as its longest option. In the headline it must be as wide as the chosen one.
+function fitSelects() {
+  const sizer = $("#sizer");
+  for (const sel of [$("#cancer"), $("#county")]) {
+    sizer.textContent = sel.selectedOptions[0]?.textContent || "";
+    sel.style.width = Math.ceil(sizer.getBoundingClientRect().width) + 6 + "px";
+  }
+}
+async function render() { $("#cancer").value = state.cancer; $("#county").value = state.county; fitSelects(); syncLayers(); await Promise.all([drawMap(), drawBriefing()]); }
 
 // ---------- sources ----------
 function cite(sourceId) {
@@ -226,7 +298,9 @@ function colorFor(d, strongAt = 3) {
 async function drawMap() {
   const mortality = state.layer === "mortality", chan = state.layer === "channel";
   const ind = mortality ? state.cancer : chan ? "channel" : META.cancers[state.cancer][state.layer];
+  const token = ++mapToken;
   const layer = await fetch(mortality ? `/api/mortality-map/${ind}` : chan ? "/api/channel-map" : `/api/map/${ind}`).then(r => r.json());
+  if (token !== mapToken) return;
   const feats = GEO.features.filter(f => layer.counties[f.properties.hyvinvointialue]);
   const P = project(feats, 340, 600);
   $("#mapsvg").innerHTML = `<svg viewBox="0 0 ${P.w.toFixed(0)} ${P.h.toFixed(0)}" role="img" aria-label="Map of counties">${
@@ -273,15 +347,17 @@ async function drawMap() {
 }
 
 // ---------- briefing ----------
-let B;
+let B, briefToken = 0, mapToken = 0;
 async function drawBriefing() {
-  B = await fetch(`/api/county/${state.county}?cancer=${state.cancer}`).then(r => r.json());
+  // Quick changes of county or cancer can return out of order; only the latest request draws.
+  const token = ++briefToken;
+  const next = await fetch(`/api/county/${state.county}?cancer=${state.cancer}`).then(r => r.json());
+  if (token !== briefToken) return;
+  B = next;
   sourceOrder = [];
   drawHeadlines();
-  const confLabel = { high: "high confidence", medium: "medium confidence", low: "low confidence" };
-  $("#cname").textContent = `${B.county.name} · ${B.cancer.label}`;
-  const conf = $("#conf"); conf.textContent = `${B.pathway.label}: ${confLabel[B.pathway.confidence]}`;
-  conf.className = "badge " + (["detection", "later", "watch"].includes(B.pathway.step) ? B.pathway.confidence : "");
+  document.title = `${B.cancer.label} in ${B.county.name} | Pathway Watch`;
+  drawRoute();
   $("#summary").innerHTML = B.summary.sentences.map(s => {
     const srcs = [...new Set(s.fact_ids.map(id => B.facts[id].source))];
     return `<li>${esc(s.text)}${srcs.map(cite).join("")}</li>`;
@@ -292,13 +368,25 @@ async function drawBriefing() {
   drawChannel(); drawGoal3(); drawMirror(); drawChart(); drawAction(); drawSim(); drawMissing(); drawSources();
 }
 
+// The care pathway as a line with four stops. Which stops are marked follows from the located step.
+const STOPS = ["Detection", "Referral", "Diagnosis", "Treatment"];
+const MARKED = { detection: [0], watch: [0], later: [1, 2, 3], national: [0, 2], none: [], unknown: [] };
+function drawRoute() {
+  const p = B.pathway, marked = MARKED[p.step] || [];
+  const cls = p.step === "watch" ? "warn" : "hit";
+  $("#route").innerHTML = STOPS.map((name, i) => `<div class="stop ${marked.includes(i) ? cls : ""} ${cls === "hit" && marked.includes(i) && marked.includes(i + 1) ? "seg" : ""}">${name}</div>`).join("");
+  const lead = { none: "No gap found on the pathway.", unknown: "Not enough data to place a gap.", watch: "Early warning at" }[p.step] || "The gap most likely starts at";
+  const where = ["none", "unknown"].includes(p.step) ? "" : ` <b>${esc(p.label[0].toLowerCase() + p.label.slice(1))}</b>.`;
+  $("#verdict").innerHTML = `${lead}${where} <span class="badge ${p.confidence}">${p.confidence} confidence</span>`;
+}
+
 function drawHeadlines() {
   const h = HL, sc = h.screening, nd = h.nordic;
   $("#headlines").innerHTML = `
     <div class="hl-card"><div class="k">Referral</div><div class="n">2× longer</div>
       Diagnosis took twice as long through public health care in a lymphoma study${cite("roadmap")}. ${h.channel.national}% of working-age doctor visits are public; ${esc(h.channel.most)} is highest at ${h.channel.most_share}%${cite("sotkanet:293")}.</div>
     <div class="hl-card"><div class="k">Detection</div><div class="n">${esc(sc[0].lowest)}</div>
-      Lowest attendance in ${esc(sc[0].cancer.toLowerCase())} screening (${sc[0].value}%)${cite(sc[0].source)} and ${esc(sc[1].lowest === sc[0].lowest ? "also in" : sc[1].lowest + " lowest in")} ${esc(sc[1].cancer.toLowerCase())} screening (${sc[1].value}%)${cite(sc[1].source)}, ${sc[1].year}. The strategy sets 80% in every county${cite("strategy")}: ${sc[0].below_target === sc[0].n ? "no county reaches it" : sc[0].below_target + " of " + sc[0].n + " counties miss it"} for bowel screening.</div>
+      Lowest attendance in ${esc(sc[0].cancer.toLowerCase())} screening (${sc[0].value}%)${cite(sc[0].source)} and ${esc(sc[1].lowest === sc[0].lowest ? "also in" : sc[1].lowest + " lowest in")} ${esc(sc[1].cancer.toLowerCase())} screening (${sc[1].value}%)${cite(sc[1].source)}, ${sc[1].year}. The strategy sets ${sc[0].target}% in every county${cite("strategy")}: ${sc[0].below_target === sc[0].n ? "no county reaches it" : sc[0].below_target + " of " + sc[0].n + " counties miss it"} for bowel screening.</div>
     <div class="hl-card"><div class="k">Outcome</div><div class="n">${nd[0].gap} points</div>
       Five-year survival for ${esc(nd[0].label.toLowerCase())} in Finland against the Nordic level. ${nd.slice(1).map(b => `${esc(b.label)} ${b.gap}`).join(", ")}${cite("nordcan")}.</div>
     <div class="hl-card"><div class="k">Data gap</div><div class="n">${h.mirror.regions} vs 0</div>
@@ -327,18 +415,17 @@ function drawChannel() {
 
 function drawMirror() {
   const m = B.mirror;
-  const maxN = 100;
   const rows = m.regions.map(r => `<span>${esc(r.region)}</span><div class="bar"><span style="width:${r["2025"]}%"></span><i class="t" style="left:${m.target}%"></i></div><span>${r["2025"]}%</span>`).join("");
   const fin = META.counties.slice(0, 6).map(c => `<span>${esc(c.name)}</span><div class="bar empty"></div><span>?</span>`).join("");
   const can = m.cancer ? ` For ${esc(B.cancer.label.toLowerCase())} (${esc(m.cancer.svf)}), ${m.cancer.share}% of ${m.cancer.n.toLocaleString("en")} Swedish patients started treatment within the lead time in 2025.${cite(m.source)}` : "";
-  const prop = m.proposal.map(p => `<li>${esc(p.action)} <span style="color:var(--muted)">(roadmap measure ${esc(p.measure)}, page ${p.page}, ${esc(p.actor)})</span>${cite("roadmap")}</li>`).join("");
+  const prop = m.proposal.map(p => `<li><span class="line">${esc(p.measure)}</span><div>${esc(p.action)}${cite("roadmap")}<small>Roadmap page ${p.page}. Who acts: ${esc(p.actor)}.</small></div></li>`).join("");
   $("#mirrorbody").innerHTML = `
     <p class="lead">Sweden measures, for every region, the share of patients who start treatment within the target time of their cancer pathway. In 2025 it was ${m.national["2025"].share}% nationally against a target of ${m.target}%, and ranged from ${m.regions[0]["2025"]}% in ${esc(m.regions[0].region)} to ${m.regions.at(-1)["2025"]}% in ${esc(m.regions.at(-1).region)}.${cite(m.source)}${can}</p>
     <div class="split">
-      <div><h2>Sweden, 2025</h2><div class="bars">${rows}</div><p class="caveat">Line: the ${m.target}% target.</p></div>
-      <div><h2>Finland, any year</h2><div class="bars">${fin}<span style="color:var(--muted)">… ${m.finland_counties - 6} more</span><span></span><span></span></div>
+      <div><h3 class="sub" style="margin-top:0">Sweden, 2025</h3><div class="bars">${rows}</div><p class="caveat">Line: the ${m.target}% target.</p></div>
+      <div><h3 class="sub" style="margin-top:0">Finland, any year</h3><div class="bars">${fin}<span style="color:var(--muted)">… ${m.finland_counties - 6} more</span><span></span><span></span></div>
         <p class="caveat">No public source gives this number for any Finnish county.${cite("thl_21_2016")}</p>
-        <strong>Proposal</strong><ul style="margin:6px 0 0;padding-left:18px">${prop}</ul></div>
+        <h3 class="sub">Proposal</h3><ul class="rows">${prop}</ul></div>
     </div>`;
 }
 
@@ -358,18 +445,20 @@ function drawGoal3() {
   $("#goal3body").innerHTML = `<table class="g3"><thead><tr><th>Cancer</th><th>Deaths per year</th><th>SMR (95% interval)</th><th></th><th>Confidence</th></tr></thead>
     <tbody>${rows}</tbody></table>
     <div class="target">${esc(t.text)}.${cite(g.source)}${cite("strategy")}</div>
-    <h2 style="margin-top:18px">Five-year survival in Finland against the Nordic level${cite("nordcan")}</h2>
+    <h3 class="sub">Five-year survival in Finland against the Nordic level${cite("nordcan")}</h3>
     <table class="g3"><thead><tr><th>Cancer</th><th>Finland</th><th>Nordic level</th><th>Gap (points)</th><th>Goal 3 target${cite("strategy")}</th></tr></thead><tbody>${surv}</tbody></table>
     <p class="caveat">National values only. NORDCAN gives no county split. Survival for patients diagnosed ${esc(g.survival[0].period)}, both sexes weighted by cases.</p>
     <p class="caveat">SMR 100 means as many deaths as the county's age structure predicts. Years ${g.rows[0].years[0]}–${g.rows[0].years.at(-1)} pooled. Lung, pancreatic and liver cancer are the poor-prognosis cancers in Goal 3, indicator 1.${cite(g.source)}</p>`;
 }
 
 function drawChart() {
+  if (!B.chart) { $("#chartsvg").innerHTML = "<p>No data.</p>"; $("#chartlegend").innerHTML = ""; return; }
+  if (B.chart.kind === "smr") return drawSmrChart();
   const c = B.chart, W = 420, H = 220, L = 34, R = 18, T = 10, Bm = 26;
   // Show only the years the county has data for, so both lines cover the same span.
   const years = Object.keys(c.county).map(Number).sort();
-  c.national = Object.fromEntries(Object.entries(c.national).filter(([y]) => years.includes(+y)));
-  const vals = [...Object.values(c.county), ...Object.values(c.national)];
+  const national = Object.fromEntries(Object.entries(c.national).filter(([y]) => years.includes(+y)));
+  const vals = [...Object.values(c.county), ...Object.values(national)];
   if (!years.length) { $("#chartsvg").innerHTML = "<p>No data.</p>"; return; }
   let lo = Math.floor(Math.min(...vals) - 2), hi = Math.ceil(Math.max(...vals) + 2);
   const x = y => L + (years.length === 1 ? 0 : (y - years[0]) / (years[years.length - 1] - years[0]) * (W - L - R));
@@ -383,11 +472,11 @@ function drawChart() {
   let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Survival over time">` +
     ticks.map(v => `<line x1="${L}" x2="${W - R}" y1="${yv(v)}" y2="${yv(v)}" stroke="var(--line)"/><text x="${L - 6}" y="${yv(v) + 4}" text-anchor="end">${v}%</text>`).join("") +
     years.map(y => `<text x="${x(y)}" y="${H - 8}" text-anchor="middle">${y}</text>`).join("");
-  svg += line(c.national, "var(--muted)", 'stroke-dasharray="1 0"') + line(c.county, "var(--accent)") + "</svg>";
+  svg += line(national, "var(--muted)") + line(c.county, "var(--accent)") + "</svg>";
   $("#chartsvg").innerHTML = svg;
   $("#charttitle").innerHTML = `Five-year survival, ${esc(B.cancer.label.toLowerCase())}${cite(c.source)}`;
   $("#chartlegend").innerHTML = `<span><i style="background:var(--accent)"></i>${esc(B.county.name)}</span><span><i style="background:var(--muted)"></i>Finland</span>` +
-    `<span style="flex-basis:100%">${nordicLine(c.nordic.benchmark)}</span>`;
+    `<span style="flex-basis:100%">${nordicLine(B.nordic)}</span>`;
 }
 
 function nordicLine(b) {
@@ -400,36 +489,62 @@ function nordicLine(b) {
 
 function drawAction() {
   const [first, ...rest] = B.recommendations;
-  const page = r => r.page ? `, page ${r.page}` : ", page to confirm";
+  const page = r => r.page ? `page ${r.page}` : "page to confirm";
   if (!first) { $("#action").innerHTML = "<p>No recommendation.</p>"; $("#more").innerHTML = ""; return; }
   $("#action").innerHTML = `
-    <div class="meta">Roadmap measure ${esc(first.measure)}${page(first)}${cite("roadmap")} · Who acts: ${esc(first.actor)}</div>
+    <div class="meta"><span class="line">${esc(first.measure)}</span>&nbsp; Roadmap measure, ${page(first)}${cite("roadmap")}. Who acts: ${esc(first.actor)}.</div>
     <div class="what">${esc(first.action)}</div>
-    ${first.detail ? `<div>${esc(first.detail)}</div>` : ""}
-    ${first.nordic ? `<div class="meta" style="margin-top:6px">Nordic model: ${esc(first.nordic)}</div>` : ""}
-    <div class="meta" style="margin-top:6px">Why here: ${esc(first.why)}${first.evidence.map(id => cite(B.facts[id].source)).filter((v, i, a) => a.indexOf(v) === i).join("")}</div>`;
-  $("#more").innerHTML = rest.map(r => `<li>${esc(r.action)} <span class="meta" style="color:var(--muted)">(measure ${esc(r.measure)}${page(r)}, ${esc(r.actor)})</span>${cite("roadmap")}</li>`).join("");
+    ${first.detail ? `<div class="detail">${esc(first.detail)}</div>` : ""}
+    ${first.nordic ? `<div class="meta" style="margin-top:8px">Nordic model: ${esc(first.nordic)}</div>` : ""}
+    ${first.priority ? `<div class="meta" style="margin-top:8px">Counties with significantly more ${esc(B.cancer.label.toLowerCase())} deaths than their age structure predicts: ${first.priority.map(p => `${esc(p.county)} (SMR ${p.smr})`).join(", ")}${cite(first.priority_source)}</div>` : ""}
+    <div class="meta" style="margin-top:8px">Why here: ${esc(first.why)}${first.evidence.map(id => cite(B.facts[id].source)).filter((v, i, a) => a.indexOf(v) === i).join("")}</div>`;
+  $("#morewrap").style.display = rest.length ? "" : "none";
+  $("#more").innerHTML = rest.map(r => `<li><span class="line">${esc(r.measure)}</span><div>${esc(r.action)}${cite("roadmap")}<small>Roadmap ${page(r)}. Who acts: ${esc(r.actor)}.</small></div></li>`).join("");
 }
 
+function drawSmrChart() {
+  const c = B.chart, W = 420, H = 220, L = 34, R = 18, T = 10, Bm = 26;
+  const years = Object.keys(c.county).map(Number).sort();
+  const vals = [...Object.values(c.county), 100];
+  const lo = Math.floor(Math.min(...vals) / 10) * 10 - 5, hi = Math.ceil(Math.max(...vals) / 10) * 10 + 5;
+  const x = y => L + (y - years[0]) / (years.at(-1) - years[0]) * (W - L - R);
+  const yv = v => T + (hi - v) / (hi - lo) * (H - T - Bm);
+  const ticks = []; for (let v = Math.ceil(lo / 10) * 10; v <= hi; v += 10) ticks.push(v);
+  const pts = years.map(y => [x(y), yv(c.county[y]), c.county[y], y]);
+  $("#chartsvg").innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Deaths against expected over time">` +
+    ticks.map(v => `<line x1="${L}" x2="${W - R}" y1="${yv(v)}" y2="${yv(v)}" stroke="var(--line)"/><text x="${L - 6}" y="${yv(v) + 4}" text-anchor="end">${v}</text>`).join("") +
+    years.map(y => `<text x="${x(y)}" y="${H - 8}" text-anchor="middle">${y}</text>`).join("") +
+    `<line x1="${L}" x2="${W - R}" y1="${yv(100)}" y2="${yv(100)}" stroke="var(--muted)" stroke-width="2.5"/>` +
+    `<path d="M${pts.map(p => p[0].toFixed(1) + "," + p[1].toFixed(1)).join("L")}" fill="none" stroke="var(--accent)" stroke-width="2.5"/>` +
+    pts.map(p => `<circle cx="${p[0]}" cy="${p[1]}" r="3" fill="var(--accent)"><title>${p[3]}: SMR ${p[2]}</title></circle>`).join("") + "</svg>";
+  $("#charttitle").innerHTML = `${esc(B.cancer.label)} deaths against expected (SMR)${cite(c.source)}`;
+  $("#chartlegend").innerHTML = `<span><i style="background:var(--accent)"></i>${esc(B.county.name)}</span><span><i style="background:var(--muted)"></i>100 = as many as the age structure predicts</span>` +
+    `<span style="flex-basis:100%">No county survival data exists for this cancer. Single years are noisy; the Goal 3 panel pools three years. ${nordicLine(B.nordic)}</span>`;
+}
+
+// The backend computes the simulation for every slider position; the page only picks one.
 function drawSim() {
   const s = B?.simulation; if (!s) return;
-  const share = $("#slider").value / 100;
-  const gapPts = s.national_survival - s.county_survival;
-  if (s.cases.value == null || s.county_survival == null) { $("#simbig").textContent = "–"; $("#simtext").textContent = "Not enough data."; return; }
-  if (gapPts <= 0) {
+  const nordic = s.mode === "nordic";
+  $("#sim h2").textContent = nordic ? "If Finland reached the Nordic level" : "If the county reached the national level";
+  if (!s.steps) { $("#simbig").textContent = "–"; $("#simtext").textContent = "Not enough data."; $("#simnote").textContent = ""; return; }
+  const pct = +$("#slider").value, extra = s.steps.survivors[pct], reached = s.steps.reached[pct];
+  const label = esc(B.cancer.label.toLowerCase());
+  if (s.goal <= s.start) {
     $("#simbig").textContent = "0";
-    $("#simtext").innerHTML = `${esc(B.county.name)} is already at or above the national survival (${s.county_survival}% against ${s.national_survival}% in ${s.year})${cite(B.chart.source)}.`;
+    $("#simtext").innerHTML = `${esc(B.county.name)} is already at or above the national survival (${s.start}% against ${s.goal}% in ${s.period})${cite(s.source)}.`;
   } else {
-    const extra = Math.round(s.cases.value * gapPts / 100 * share);
     $("#simbig").textContent = `+${extra}`;
-    $("#simtext").innerHTML = `more people alive five years after diagnosis, for each year's patients, if the county closes ${Math.round(share * 100)}% of its gap (${s.county_survival}% to ${(s.county_survival + gapPts * share).toFixed(1)}%)${cite(B.chart.source)}.`;
+    $("#simtext").innerHTML = nordic
+      ? `more of ${esc(B.county.name)}'s yearly ${label} patients alive after five years, if national survival closes ${pct}% of the gap to the Nordic level (${s.start}% to ${reached}%)${cite(s.source)}.${s.target ? ` Goal 3 asks for +${s.target} points${cite("strategy")}.` : ""}`
+      : `more people alive five years after diagnosis, for each year's patients, if the county closes ${pct}% of its gap (${s.start}% to ${reached}%)${cite(s.source)}.`;
   }
   $("#simnote").innerHTML = `Estimate. About ${s.cases.value} new cases per year: ${esc(s.cases.method)}${cite(s.cases.source)}. It ignores the age structure of the county.`;
   drawSources();
 }
 
 function drawMissing() {
-  $("#missing").innerHTML = B.missing.map(m => `<li><b>${esc(m.what)}</b>${cite(m.source)}<small>${esc(m.why)}${m.measure ? ` Roadmap measure ${esc(m.measure)} addresses this.` : ""}</small></li>`).join("");
+  $("#missing").innerHTML = B.missing.map(m => `<li><span class="line ${m.measure ? "" : "none"}">${m.measure ? esc(m.measure) : "–"}</span><div>${esc(m.what)}${cite(m.source)}<small>${esc(m.why)}${m.measure ? ` Roadmap measure ${esc(m.measure)} addresses this.` : ""}</small></div></li>`).join("");
 }
 
 document.addEventListener("click", e => {

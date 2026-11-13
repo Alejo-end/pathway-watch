@@ -1,9 +1,13 @@
 """Three plain sentences for the decision-maker: the gap, the likely step, the first action.
 
-The language model only rewords computed facts. Every sentence must cite fact IDs, and every
-number in a sentence must appear in the facts it cites. A sentence that fails either check is
-removed before display. Without a model (no credentials, PATHWAY_LLM=0, or an error), a fixed
-template writes the sentences from the same facts.
+A fixed template writes them from the computed facts. If Anthropic credentials are present
+and PATHWAY_LLM is not 0, the language model rewords the facts instead. Either way, `check`
+removes a sentence before display if it breaks one of its rules.
+
+What `check` cannot do: it compares numbers and quantity words with the cited facts, but it
+does not read meaning. A sentence that gives a county's number to the country, or that adds
+a claim without numbers, passes. The template cannot make these errors. The model can, so
+the prompt forbids them and the page says which of the two wrote the text.
 """
 
 from __future__ import annotations
@@ -12,11 +16,19 @@ import json
 import os
 import re
 
-from .analysis import Data, Fact, Pathway, gap
-from .indicators import CANCERS
+from . import nordcan
+from .analysis import Pathway, gap
+from .facts import Fact
+from .indicators import CANCERS, has_county_survival
+from .mortality import shared as shared_mortality
+from .sotkanet import CountyData
 
 MODEL = "claude-opus-5-5"
 NUMBER = re.compile(r"\d+(?:[.,]\d+)*")
+# Quantities written as words. A sentence may use one only if a cited fact uses it too.
+QUANTITY_WORDS = re.compile(
+    r"\b(half|twice|double[ds]?|triple[ds]?|thrice|quadruple[ds]?|two|three|four|five|six|seven|eight|nine|ten|"
+    r"dozens?|hundreds?|thousands?|millions?)\b", re.I)
 
 SYSTEM = """You write for a non-technical decision-maker in a Finnish wellbeing services county.
 You get a list of facts, each with an ID. Write at most three short sentences in plain English:
@@ -24,6 +36,7 @@ You get a list of facts, each with an ID. Write at most three short sentences in
 Rules:
 - Use only the facts given. Do not add numbers, causes, names or claims that are not in the facts.
 - Copy every number exactly as it appears in a fact.
+- Keep each number with the place and year it belongs to in the fact. Write quantities as digits, not words.
 - Say "most likely" for the pathway step. Never claim a cause.
 - For each sentence, list the IDs of the facts it uses in fact_ids."""
 
@@ -48,41 +61,60 @@ SCHEMA = {
 }
 
 
-def extra_facts(pathway: Pathway, recs: list[dict]) -> list[Fact]:
-    out = [Fact("pathway", f"Most likely pathway step: {pathway.label} ({pathway.confidence} confidence). {pathway.reason}", None, "", "pathway_rule")]
-    if recs:
-        r = recs[0]
-        out.append(Fact(f"measure.{r['measure']}", f"Roadmap measure {r['measure']}: {r['action']}", None, "", "roadmap"))
-    return out
-
-
 def numbers(text: str) -> set[str]:
     return {n.replace(",", ".") for n in NUMBER.findall(text)}
 
 
+def quantity_words(text: str) -> set[str]:
+    return {w.lower() for w in QUANTITY_WORDS.findall(text)}
+
+
 def check(sentences: list[dict], facts: list[Fact]) -> tuple[list[dict], list[dict]]:
-    """Split sentences into (kept, removed). A kept sentence cites known facts only, and every
-    number in it appears in one of the cited facts."""
+    """Split sentences into (kept, removed). A sentence is kept only if:
+
+    1. it cites at least one fact, and every ID it cites exists;
+    2. every number in it appears in one of the cited facts;
+    3. every quantity word in it ("twice", "half", "three") appears in one of the cited facts.
+    """
     by_id = {f.id: f for f in facts}
     kept, removed = [], []
     for s in sentences:
-        ids = [i for i in s.get("fact_ids", []) if i in by_id]
-        if not ids or len(ids) != len(s.get("fact_ids", [])):
+        cited = s.get("fact_ids", [])
+        if not cited or any(i not in by_id for i in cited):
             removed.append({**s, "reason": "cites no fact or an unknown fact"})
             continue
-        allowed = set().union(*(numbers(by_id[i].text) for i in ids))
-        bad = numbers(s["text"]) - allowed
+        source_text = " ".join(by_id[i].text for i in cited)
+        bad = numbers(s["text"]) - numbers(source_text)
         if bad:
             removed.append({**s, "reason": f"numbers not in the cited facts: {sorted(bad)}"})
             continue
-        kept.append({"text": s["text"], "fact_ids": ids})
+        bad = quantity_words(s["text"]) - quantity_words(source_text)
+        if bad:
+            removed.append({**s, "reason": f"quantity words not in the cited facts: {sorted(bad)}"})
+            continue
+        kept.append({"text": s["text"], "fact_ids": cited})
     return kept, removed
 
 
-def template(data: Data, cancer: str, county: str, pathway: Pathway, recs: list[dict]) -> list[dict]:
+def _first_action_sentence(recs: list[dict]) -> list[dict]:
+    if not recs:
+        return []
+    r = recs[0]
+    action = r["action"].rstrip(".")
+    return [{"text": f"First action: {action[0].lower() + action[1:]} (roadmap measure {r['measure']}).",
+             "fact_ids": [f"measure.{r['measure']}"]}]
+
+
+def template(data: CountyData, cancer: str, county: str, pathway: Pathway, recs: list[dict]) -> list[dict]:
+    """The fixed wording. Each sentence names the facts it restates."""
+    if has_county_survival(cancer):
+        return _county_sentences(data, cancer, county, pathway) + _first_action_sentence(recs)
+    return _national_sentences(data, cancer, county, pathway) + _first_action_sentence(recs)
+
+
+def _county_sentences(data: CountyData, cancer: str, county: str, pathway: Pathway) -> list[dict]:
     spec = CANCERS[cancer]
-    name = data.names[county]
-    label = spec["label"].lower()
+    name, label = data.names[county], spec["label"].lower()
     s_ind, c_ind = spec["survival"], spec["screening"]
     sg, cg = gap(data, s_ind, county), gap(data, c_ind, county)
     out = []
@@ -94,8 +126,8 @@ def template(data: Data, cancer: str, county: str, pathway: Pathway, recs: list[
             "near": "close to the national value",
         }[sg.direction]
         out.append({
-            "text": f"In {name}, five-year survival for {label} was {sg.county_values[-1]:g}% in {y}, against {sg.national_values[-1]:g}% for Finland, "
-                    f"and {trend} over {sg.years[0]}–{y}.",
+            "text": f"In {name}, five-year survival for {label} was {sg.county_values[-1]:g}% in {y}, against "
+                    f"{sg.national_values[-1]:g}% for Finland, and {trend} over {sg.years[0]}–{y}.",
             "fact_ids": [f"{s_ind}.county.{y}", f"{s_ind}.national.{y}", f"{s_ind}.gap"],
         })
     if pathway.step in ("detection", "later", "watch") and cg.years:
@@ -108,11 +140,29 @@ def template(data: Data, cancer: str, county: str, pathway: Pathway, recs: list[
             "watch": f"Screening attendance is low ({att}), which is an early warning at the detection step.",
         }[pathway.step]
         out.append({"text": text, "fact_ids": [f"{c_ind}.county.{y}", f"{c_ind}.national.{y}", "pathway"]})
-    if recs:
-        r = recs[0]
-        action = r["action"].rstrip(".")
-        out.append({"text": f"First action: {action[0].lower() + action[1:]} (roadmap measure {r['measure']}).",
-                    "fact_ids": [f"measure.{r['measure']}"]})
+    return out
+
+
+def _national_sentences(data: CountyData, cancer: str, county: str, pathway: Pathway) -> list[dict]:
+    """For a cancer with no county survival data: county mortality, then Finland against the Nordic level."""
+    name, label = data.names[county], CANCERS[cancer]["label"].lower()
+    out = []
+    mort = shared_mortality()
+    if mort.ok:
+        m = mort.smr(cancer, county)
+        word = {"worse": "more than", "better": "fewer than", "near": "about as many as"}[m.direction]
+        out.append({
+            "text": f"In {name}, {round(m.deaths_per_year)} people died of {label} each year in {m.years[0]}–{m.years[-1]}, "
+                    f"{word} the county's age structure predicts (SMR {m.smr}, {m.confidence} confidence).",
+            "fact_ids": [f"mort.{cancer}.yearly"],
+        })
+    b = nordcan.benchmark(nordcan.load(), cancer)
+    if b["gap"] is not None:
+        out.append({
+            "text": f"Nationally, five-year survival is {b['finland']}% against a Nordic level of {b['nordic']}%, "
+                    f"so the gap most likely starts at {pathway.label.lower()}.",
+            "fact_ids": [f"nordcan.{cancer}", "pathway"],
+        })
     return out
 
 
@@ -152,7 +202,9 @@ def llm_sentences(facts: list[Fact]) -> list[dict] | None:
     return json.loads(text).get("sentences", [])
 
 
-def summarize(data: Data, cancer: str, county: str, pathway: Pathway, recs: list[dict], facts: list[Fact]) -> dict:
+def summarize(data: CountyData, cancer: str, county: str, pathway: Pathway, recs: list[dict], facts: list[Fact]) -> dict:
+    """The checked sentences, the removed ones with the reason, and who wrote them ("model" or "template").
+    If the model's draft loses every sentence in the check, the template takes over."""
     drafted = llm_sentences(facts)
     writer = "model" if drafted else "template"
     kept, removed = check(drafted or template(data, cancer, county, pathway, recs), facts)

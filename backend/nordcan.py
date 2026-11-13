@@ -8,13 +8,16 @@ County values from Sotkanet use another method and are never put on the same sca
 from __future__ import annotations
 
 import json
+from functools import lru_cache
 from pathlib import Path
 
 FILE = Path(__file__).resolve().parent.parent / "data" / "nordcan.json"
 COUNTRIES = {"finland": "finland-246", "sweden": "sweden-752", "norway": "norway-578"}
 
 
+@lru_cache(maxsize=None)
 def load(path: Path = FILE) -> dict:
+    """The NORDCAN file, read once per path."""
     return json.loads(path.read_text()) if path.exists() else {"sites": {}}
 
 

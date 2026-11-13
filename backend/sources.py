@@ -26,7 +26,7 @@ STATIC_SOURCES: dict[str, dict] = {
     "cancer_registry": {
         "title": "Finnish Cancer Registry, cancer statistics",
         "url": "https://syoparekisteri.fi/tilastot/",
-        "note": "Source of the national yearly case counts. The values in data/reference.json are approximate and need a check against the registry.",
+        "note": "Holds case counts, stage and survival per region. The app does not read it: its statistics application has no open API that we found.",
     },
     "nordcan": {
         "title": "NORDCAN 2.0, Nordic cancer statistics",
