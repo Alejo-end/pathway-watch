@@ -20,6 +20,7 @@ from . import sotkanet
 from .analyst import summarize
 from .channel import channel_table
 from .indicators import CANCERS, NATIONAL, has_county_survival
+from .priorities import ranking
 from .mortality import GOAL3, LABELS, all_years, shared as shared_mortality
 from .recommend import MEASURES, recommend
 
@@ -133,6 +134,14 @@ def headlines():
         "mirror": {"sweden": svf["national"]["2025"]["share"], "target": svf["target"],
                    "regions": len(svf["regions"]), "finland_counties": len(data.counties)},
     }
+
+
+@app.get("/api/national/{cancer}")
+def national(cancer: str):
+    """Where to start in Finland for this cancer: counties ranked by the number of confident signals."""
+    if cancer not in CANCERS:
+        raise HTTPException(404, "unknown cancer")
+    return ranking(data, mort, cancer)
 
 
 @app.get("/api/county/{county}")

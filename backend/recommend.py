@@ -1,6 +1,9 @@
 """Map a located gap to roadmap measures. Each recommendation names its measure and its evidence.
 
-Pages refer to the measure headings in the roadmap PDF (page numbers as printed).
+`page` is the page of the measure heading in the roadmap PDF, as printed. `first_step` restates
+the measure's own implementation paragraph ("Toteutus") on that page. `level` says who must act:
+"account" is a wellbeing services county or its hospital, "national" is the ministry, THL or
+FICAN, and "both" needs a national decision that each county then applies.
 """
 
 from __future__ import annotations
@@ -16,6 +19,10 @@ MEASURES: dict[str, dict] = {
         "nordic": "Denmark (Kræftpakkeforløb), Sweden (SVF) and Norway (Pakkeforløp)",
         "steps": ["later"],
         "actor": "County, with FICAN",
+        "level": "both",
+        "first_step": 'Describe the symptom-based procedures, the test responsibilities of primary care and the direct routes to tests. Train primary care staff to recognise cancer early.',
+        "success": 'The share of patients who start treatment within the target time. Sweden reports it per region: 47% in 2025 against a target of 80%.',
+        "success_source": "rcc_svf_2025",
         "page": 52,
     },
     "3.1.2": {
@@ -24,6 +31,10 @@ MEASURES: dict[str, dict] = {
         "nordic": None,
         "steps": ["later"],
         "actor": "FICAN and THL",
+        "level": "national",
+        "first_step": 'Describe the national pathway with the Nordic models, then apply it as a regional pathway in each county.',
+        "success": "The roadmap's own indicator: patients start treatment within the target times.",
+        "success_source": "roadmap",
         "page": 56,
     },
     "2.5.1": {
@@ -32,6 +43,10 @@ MEASURES: dict[str, dict] = {
         "nordic": None,
         "steps": ["later"],
         "actor": "County",
+        "level": "both",
+        "first_step": 'Add doctor capacity in primary care and support personal doctor models with state grants.',
+        "success": 'Continuity of care and delays in access to care, which the roadmap says to follow. No public county figure exists yet.',
+        "success_source": "roadmap",
         "page": 51,
     },
     "1.3.1": {
@@ -40,6 +55,10 @@ MEASURES: dict[str, dict] = {
         "nordic": None,
         "steps": ["detection"],
         "actor": "County, with THL",
+        "level": "account",
+        "first_step": 'Produce multilingual, plain-language material and build targeted communication with language and cultural minority organisations.',
+        "success": "Screening attendance of 80% in every county, the strategy's target. Sotkanet publishes it per county each year.",
+        "success_source": "strategy",
         "page": 33,
     },
     "2.4.5": {
@@ -48,6 +67,10 @@ MEASURES: dict[str, dict] = {
         "nordic": None,
         "steps": ["detection"],
         "actor": "County and THL",
+        "level": "both",
+        "first_step": 'Report all screening data monthly to the screening registers, so that the Cancer Registry can give each county a current picture.',
+        "success": "Screening attendance of 80% in every county, the strategy's target. Sotkanet publishes it per county each year.",
+        "success_source": "strategy",
         "page": 50,
     },
     "1.3.2": {
@@ -56,6 +79,10 @@ MEASURES: dict[str, dict] = {
         "nordic": None,
         "steps": ["detection"],
         "actor": "THL and the county",
+        "level": "national",
+        "first_step": "Write and run a national plan on cancer symptom awareness with the Cancer Society, FICAN and THL. The roadmap's model is the UK campaign Be Clear on Cancer.",
+        "success": "At least 70% of cancers diagnosed at stage I or II, the strategy's target.",
+        "success_source": "strategy",
         "page": 34,
     },
     "2.3.4": {
@@ -64,6 +91,10 @@ MEASURES: dict[str, dict] = {
         "nordic": None,
         "steps": ["national"],
         "actor": "Ministry of Social Affairs and Health, THL and the counties",
+        "level": "national",
+        "first_step": 'Extend the pilot regionally in 2026–2028 and invite the target group of the EU recommendation.',
+        "success": 'Five-year lung cancer survival up by 14 points, the Goal 3 target.',
+        "success_source": "strategy",
         "page": 46,
     },
     "3.1.4": {
@@ -72,6 +103,10 @@ MEASURES: dict[str, dict] = {
         "nordic": "Sweden (SVF lead-time target: 80% of patients within the lead time)",
         "steps": ["data"],
         "actor": "FICAN and THL",
+        "level": "national",
+        "first_step": 'Define the targets and indicators in the same process as the care pathways, and report them through the quality register.',
+        "success": 'Every county reports the share of patients treated within the target time, as all 21 Swedish regions do.',
+        "success_source": "rcc_svf_2025",
         "page": 58,
     },
     "3.2.1": {
@@ -80,6 +115,10 @@ MEASURES: dict[str, dict] = {
         "nordic": None,
         "steps": ["data"],
         "actor": "Ministry of Social Affairs and Health, THL",
+        "level": "national",
+        "first_step": 'Update the ministry decree on THL quality registers to include cancer, and fund the register. The research project of THL, the Cancer Registry and FICAN runs to the end of 2027.',
+        "success": 'The register publishes county data, first for five cancers.',
+        "success_source": "roadmap",
         "page": 59,
     },
 }
@@ -116,6 +155,10 @@ def recommend(data: CountyData, pathway: Pathway, county: str) -> list[dict]:
             "detail": m["detail"],
             "nordic": m["nordic"],
             "actor": m["actor"],
+            "level": m["level"],
+            "first_step": m["first_step"],
+            "success": m["success"],
+            "success_source": m["success_source"],
             "source": "roadmap",
             "page": m["page"],
             "evidence": evidence if "data" not in m["steps"] else [],

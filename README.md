@@ -30,9 +30,10 @@ A fixed template writes the three summary sentences from the computed facts. If 
 | `backend/nordcan.py` | Finland against the Nordic level (the average of Sweden and Norway) |
 | `backend/channel.py` | Channel Gap: share of working-age physician visits that go through public health centres |
 | `backend/facts.py` | The computed facts, each with its source |
-| `backend/recommend.py` | Located gap to roadmap measures |
+| `backend/recommend.py` | Located gap to roadmap measures, each with its level, first step and measure of success |
+| `backend/priorities.py` | Where to start in Finland: counties ranked by how many registers show them behind |
 | `backend/analyst.py` | Three sentences from the facts, and the sentence check |
-| `backend/app.py` | FastAPI endpoints: `/api/meta`, `/api/headlines`, `/api/map/{indicator}`, `/api/mortality-map/{cause}`, `/api/channel-map`, `/api/county/{code}?cancer=` |
+| `backend/app.py` | FastAPI endpoints: `/api/meta`, `/api/headlines`, `/api/map/{indicator}`, `/api/mortality-map/{cause}`, `/api/channel-map`, `/api/national/{cancer}`, `/api/county/{code}?cancer=` |
 | `web/index.html` | The two-minute view |
 | `tests/` | `test_analysis.py` covers the rules. `test_sources.py` traces numbers to the raw files and checks every source ID |
 

@@ -157,7 +157,8 @@ def test_every_endpoint_answers_for_every_county_and_cancer():
     from backend.app import app
     client = TestClient(app)
     for url in ("/", "/counties.geojson", "/api/meta", "/api/headlines", "/api/channel-map",
-                "/api/map/3627", "/api/map/6103", "/api/mortality-map/lung", "/api/mortality-map/all"):
+                "/api/map/3627", "/api/map/6103", "/api/mortality-map/lung", "/api/mortality-map/all",
+                "/api/national/bowel", "/api/national/lung"):
         assert client.get(url).status_code == 200, url
     for cancer in CANCERS:
         for county in data.counties:
@@ -166,3 +167,35 @@ def test_every_endpoint_answers_for_every_county_and_cancer():
     assert client.get("/api/county/99").status_code == 404
     assert client.get("/api/county/09?cancer=x").status_code == 404
     assert client.get("/api/map/1").status_code == 404
+
+
+# ---------- recommendations and the national ranking ----------
+
+def test_every_measure_says_who_acts_how_to_start_and_what_success_is():
+    sources = data.sources()
+    for mid, m in MEASURES.items():
+        assert m["level"] in ("account", "national", "both"), mid
+        assert m["first_step"] and m["success"] and m["page"], mid
+        assert m["success_source"] in sources, mid
+
+
+def test_ranking_puts_counties_behind_in_more_registers_first():
+    from backend.priorities import ranking
+    r = ranking(data, mort, "bowel")
+    registers = [row["registers"] for row in r["rows"]]
+    assert registers == sorted(registers, reverse=True)
+    assert len(r["rows"]) + r["without_signal"] == len(data.counties)
+    assert sum(r["by_measure"].values()) == len(r["rows"])
+    sources = data.sources()
+    assert all(s["source"] in sources for row in r["rows"] for s in row["signals"])
+
+
+def test_a_signal_needs_confidence_and_deaths_count_as_one_register():
+    from backend.priorities import ranking, signals
+    for cancer in CANCERS:
+        for row in ranking(data, mort, cancer)["rows"]:
+            kinds = {s["kind"].split(":")[0] for s in row["signals"]}
+            assert row["registers"] == len(kinds) <= 3
+    # Päijät-Häme, bowel cancer: survival is behind with high confidence, screening is not behind.
+    kinds = [s["kind"] for s in signals(data, mort, "bowel", "09")]
+    assert "survival" in kinds and "screening" not in kinds

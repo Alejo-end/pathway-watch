@@ -104,6 +104,19 @@ sup.cite a:hover { text-decoration: underline; }
 .rows li > div { max-width: 78ch; }
 .rows small { display: block; color: var(--muted); font-size: 13.5px; margin-top: 2px; }
 .more { margin-top: 4px; }
+.action dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 16px 0 0; font-size: 15px; max-width: 80ch; }
+.action dt { font-weight: 700; }
+.action dd { margin: 0; }
+.level { font-weight: 700; }
+/* National ranking: one row per county, the county name is the button. */
+.rank { list-style: none; margin: 0; padding: 0; }
+.rank li { display: grid; grid-template-columns: 64px minmax(120px, 190px) 1fr; gap: 4px 14px; padding: 10px 0; border-bottom: 1px solid var(--line); align-items: center; }
+.rank li.sel { background: var(--chip); }
+.rank button { font: inherit; font-weight: 700; text-align: left; background: none; border: 0; padding: 0; color: var(--ink); cursor: pointer; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
+.rank .sig { font-size: 13.5px; color: var(--muted); }
+.rank .sig b { color: var(--below); font-weight: 600; }
+.dots { letter-spacing: 3px; color: var(--below); font-size: 15px; }
+@media (max-width: 700px) { .rank li { grid-template-columns: 64px 1fr; } .rank .sig { grid-column: 2; } }
 
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 40px; }
 @media (max-width: 1100px) { .grid2 { grid-template-columns: 1fr; } }
@@ -181,6 +194,10 @@ footer { border-top: 3px solid var(--rule); color: var(--muted); font-size: 13px
       <div class="action" id="action"></div>
       <div class="more" id="morewrap"><ul class="rows" id="more"></ul></div>
     </section>
+    <section class="panel" id="national">
+      <h2 id="nationaltitle">Where to start in Finland</h2>
+      <div id="nationalbody"></div>
+    </section>
     <div class="grid2">
       <section class="panel" id="chart"><h2 id="charttitle">Five-year survival</h2><div id="chartsvg"></div><div class="legend" id="chartlegend"></div></section>
       <section class="panel sim" id="sim">
@@ -257,6 +274,34 @@ function fitSelects() {
   }
 }
 async function render() { $("#cancer").value = state.cancer; $("#county").value = state.county; fitSelects(); syncLayers(); await Promise.all([drawMap(), drawBriefing()]); }
+
+// Counties ranked by how many registers show them behind. Fetched once per cancer.
+let NAT = {};
+async function drawNational() {
+  const cancer = state.cancer;
+  if (!NAT[cancer]) NAT[cancer] = await fetch(`/api/national/${cancer}`).then(r => r.json());
+  if (cancer !== state.cancer) return;
+  const n = NAT[cancer], label = META.cancers[cancer].label.toLowerCase();
+  $("#nationaltitle").textContent = `Where to start in Finland for ${label}`;
+  const groups = Object.entries(n.by_measure).sort((a, b) => b[1] - a[1])
+    .map(([m, k]) => `<span class="line">${esc(m)}</span> ${k} ${k === 1 ? "county" : "counties"}`).join(" &nbsp; ");
+  const srcs = new Set();
+  const rows = n.rows.map(r => {
+    r.signals.forEach(s => srcs.add(s.source));
+    return `<li class="${r.code === state.county ? "sel" : ""}"><span class="line">${esc(r.measure)}</span>
+      <button data-c="${r.code}">${esc(r.name)}</button>
+      <span class="sig">${n.registers > 1 ? `<span class="dots" title="${r.registers} of ${n.registers} registers">${"●".repeat(r.registers)}${"○".repeat(n.registers - r.registers)}</span> ` : ""}${r.signals.map(s => `<b>${esc(s.text)}</b>`).join(", ")}</span></li>`;
+  }).join("");
+  $("#nationalbody").innerHTML = `
+    <p class="lead">${n.registers > 1
+      ? `${n.rows.length} of ${n.counties} counties are behind Finland with confidence in at least one register: survival, screening or deaths${[...srcs].map(cite).join("")}. Counties behind in more than one come first.`
+      : `${n.rows.length} of ${n.counties} counties have more deaths than their age structure predicts, with confidence${[...srcs].map(cite).join("")}. Deaths are the only county register for this cancer.`} The badge is each county's first action.</p>
+    <p class="caveat" style="margin:0 0 10px">${groups}</p>
+    <ul class="rank">${rows}</ul>
+    <p class="caveat">${n.without_signal} counties show no confident signal.${n.registers > 1 ? " A filled dot is one register in which the county is behind." : ""}</p>`;
+  $("#nationalbody").querySelectorAll("button").forEach(b => b.onclick = () => { state.county = b.dataset.c; save(); render(); window.scrollTo({ top: 0 }); });
+  drawSources();
+}
 
 // ---------- sources ----------
 function cite(sourceId) {
@@ -365,7 +410,7 @@ async function drawBriefing() {
   $("#writer").innerHTML = (B.summary.writer === "model" ? "Worded by the language model from computed facts." : "Written from computed facts by a fixed template.")
     + (B.summary.removed.length ? ` <span class="removed">${B.summary.removed.length} sentence(s) removed: no source.</span>` : "");
   $("#caveats").textContent = B.pathway.caveats.join(" ");
-  drawChannel(); drawGoal3(); drawMirror(); drawChart(); drawAction(); drawSim(); drawMissing(); drawSources();
+  drawNational(); drawChannel(); drawGoal3(); drawMirror(); drawChart(); drawAction(); drawSim(); drawMissing(); drawSources();
 }
 
 // The care pathway as a line with four stops. Which stops are marked follows from the located step.
@@ -487,19 +532,25 @@ function nordicLine(b) {
   return `National five-year survival, NORDCAN ${esc(b.period)}: ${parts.join(", ")}. NORDCAN uses another method than Sotkanet, so these values are not on the chart scale.${cite("nordcan")}`;
 }
 
+const LEVEL = { account: "Account level: the county or its hospital", national: "National level", both: "National decision, applied in each county" };
 function drawAction() {
   const [first, ...rest] = B.recommendations;
   const page = r => r.page ? `page ${r.page}` : "page to confirm";
   if (!first) { $("#action").innerHTML = "<p>No recommendation.</p>"; $("#more").innerHTML = ""; return; }
   $("#action").innerHTML = `
-    <div class="meta"><span class="line">${esc(first.measure)}</span>&nbsp; Roadmap measure, ${page(first)}${cite("roadmap")}. Who acts: ${esc(first.actor)}.</div>
+    <div class="meta"><span class="line">${esc(first.measure)}</span>&nbsp; Roadmap measure, ${page(first)}${cite("roadmap")}. <span class="level">${LEVEL[first.level]}.</span></div>
     <div class="what">${esc(first.action)}</div>
     ${first.detail ? `<div class="detail">${esc(first.detail)}</div>` : ""}
     ${first.nordic ? `<div class="meta" style="margin-top:8px">Nordic model: ${esc(first.nordic)}</div>` : ""}
     ${first.priority ? `<div class="meta" style="margin-top:8px">Counties with significantly more ${esc(B.cancer.label.toLowerCase())} deaths than their age structure predicts: ${first.priority.map(p => `${esc(p.county)} (SMR ${p.smr})`).join(", ")}${cite(first.priority_source)}</div>` : ""}
-    <div class="meta" style="margin-top:8px">Why here: ${esc(first.why)}${first.evidence.map(id => cite(B.facts[id].source)).filter((v, i, a) => a.indexOf(v) === i).join("")}</div>`;
+    <dl>
+      <dt>First step</dt><dd>${esc(first.first_step)}${cite("roadmap")}</dd>
+      <dt>Success is</dt><dd>${esc(first.success)}${cite(first.success_source)}</dd>
+      <dt>Who acts</dt><dd>${esc(first.actor)}</dd>
+      <dt>Why here</dt><dd>${esc(first.why)}${first.evidence.map(id => cite(B.facts[id].source)).filter((v, i, a) => a.indexOf(v) === i).join("")}</dd>
+    </dl>`;
   $("#morewrap").style.display = rest.length ? "" : "none";
-  $("#more").innerHTML = rest.map(r => `<li><span class="line">${esc(r.measure)}</span><div>${esc(r.action)}${cite("roadmap")}<small>Roadmap ${page(r)}. Who acts: ${esc(r.actor)}.</small></div></li>`).join("");
+  $("#more").innerHTML = rest.map(r => `<li><span class="line">${esc(r.measure)}</span><div>${esc(r.action)}${cite("roadmap")}<small>${LEVEL[r.level]}. Roadmap ${page(r)}. Who acts: ${esc(r.actor)}. Success is: ${esc(r.success[0].toLowerCase() + r.success.slice(1))}${cite(r.success_source)}</small></div></li>`).join("");
 }
 
 function drawSmrChart() {
