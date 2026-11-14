@@ -2,6 +2,22 @@
 
 Pathway Watch is for a decision-maker in a wellbeing services county. It shows where cancer patients do worse than elsewhere in Finland and which step of the care pathway to ask about. It also shows which roadmap measure to act on first. Read `HANDBOOK.md` for an explanation with maps. The build brief is `../PATHWAY_PLAN.md`.
 
+## In brief
+
+Our entry to "Equal Care Across Finland" by AstraZeneca. The page gives three things in under two minutes:
+
+1. Where cancer patients in a county are behind the rest of Finland, with a rough 95% interval.
+2. Which step of the care pathway to ask questions about. The app names a question, not a cause.
+3. Which measure of the national roadmap to act on first.
+
+Code computes every number, and each number links to its source. The data is public and aggregated. The tool gives no advice about one patient.
+
+## What it looks like
+
+![Bowel cancer in Päijät-Häme: the map of counties, the care pathway, three sentences and the first action](docs/screenshots/county-view.png)
+
+The picture shows the app on its cached open data from THL Sotkanet and Statistics Finland.
+
 ## Run
 
 ```
