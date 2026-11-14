@@ -1,4 +1,4 @@
-"""The gap, its confidence, the pathway rule and the simulation."""
+"""The gap, its persistence, the rough interval, the pathway rule and the simulation."""
 
 from backend import analysis as A
 from backend.indicators import NATIONAL
@@ -12,34 +12,48 @@ def make(values, county="09"):
     return CountyData(values, {NATIONAL: "Finland", county: "Testland"}, {NATIONAL: 1000, county: 100}, {}, {})
 
 
-def test_gap_high_confidence_when_below_all_three_years():
-    d = make({1: {NATIONAL: FLAT, "09": {2022: 65, 2023: 66, 2024: 64}}})
+def test_gap_is_the_latest_year_difference_and_not_an_average():
+    d = make({1: {NATIONAL: FLAT, "09": {2022: 60, 2023: 62, 2024: 67}}})
     g = A.gap(d, 1, "09")
-    assert (g.avg_gap, g.direction, g.confidence) == (-5.0, "below", "high")
+    assert (g.year, g.county_value, g.national_value, g.gap, g.direction) == (2024, 67, 70, -3.0, "below")
+    assert g.gap != round((60 + 62 + 67) / 3 - 70, 1)
 
 
-def test_gap_medium_when_one_year_disagrees_and_low_with_two_years_of_data():
+def test_persistent_when_on_the_same_side_in_most_years():
     d = make({1: {NATIONAL: FLAT, "09": {2022: 65, 2023: 70, 2024: 64}}})
-    assert A.gap(d, 1, "09").confidence == "medium"
+    g = A.gap(d, 1, "09")
+    assert (g.years_same_side, g.persistence) == (2, "persistent")
+
+
+def test_mixed_when_the_latest_side_is_not_the_usual_side():
+    nat = {y: 70 for y in range(2019, 2025)}
+    d = make({1: {NATIONAL: nat, "09": {2019: 75, 2020: 74, 2021: 73, 2022: 66, 2023: 65, 2024: 64}}})
+    g = A.gap(d, 1, "09")
+    assert (g.direction, g.years_same_side, len(g.years), g.persistence) == ("below", 3, 6, "mixed")
+
+
+def test_short_with_fewer_than_three_shared_years_and_for_no_data():
     d = make({1: {NATIONAL: {2023: 70, 2024: 70}, "09": {2023: 60, 2024: 60}}})
-    assert A.gap(d, 1, "09").confidence == "low"
+    assert A.gap(d, 1, "09").persistence == "short"
+    g = A.gap(make({1: {NATIONAL: FLAT}}), 1, "09")
+    assert (g.year, g.gap, g.direction, g.persistence) == (None, None, "unknown", "short")
 
 
-def test_a_county_that_matches_finland_every_year_is_near_with_high_confidence():
+def test_a_county_that_matches_finland_every_year_is_near_and_persistent():
     d = make({1: {NATIONAL: FLAT, "09": {2022: 70, 2023: 70.5, 2024: 69.5}}})
     g = A.gap(d, 1, "09")
-    assert (g.direction, g.confidence) == ("near", "high")
+    assert (g.direction, g.years_same_side, g.persistence) == ("near", 3, "persistent")
 
 
-def test_a_near_average_from_years_that_swing_both_ways_has_low_confidence():
+def test_a_near_latest_year_after_years_that_swing_both_ways_is_mixed():
     d = make({1: {NATIONAL: FLAT, "09": {2022: 75, 2023: 65, 2024: 70.5}}})
     g = A.gap(d, 1, "09")
-    assert (g.direction, g.confidence) == ("near", "low")
+    assert (g.direction, g.years_same_side, g.persistence) == ("near", 1, "mixed")
 
 
-def test_gap_uses_last_three_shared_years():
-    d = make({1: {NATIONAL: {2019: 50, **FLAT}, "09": {2019: 10, **FLAT}}})
-    assert A.gap(d, 1, "09").years == [2022, 2023, 2024]
+def test_gap_counts_every_shared_year():
+    d = make({1: {NATIONAL: {2019: 50, **FLAT}, "09": {2019: 10, 2021: 99, **FLAT}}})
+    assert A.gap(d, 1, "09").years == [2019, 2022, 2023, 2024]
 
 
 def test_gap_refuses_an_indicator_that_is_not_loaded():
@@ -48,22 +62,76 @@ def test_gap_refuses_an_indicator_that_is_not_loaded():
         A.gap(make({1: {NATIONAL: FLAT}}), None, "09")
 
 
-def test_pathway_rule():
-    low = {"09": {2022: 60, 2023: 60, 2024: 60}}
-    ok = {"09": {2022: 72, 2023: 72, 2024: 72}}
+LOW = {"09": {2022: 60, 2023: 60, 2024: 60}}
+OK = {"09": {2022: 72, 2023: 72, 2024: 72}}
 
-    def step(survival, screening):
-        d = make({3627: {NATIONAL: FLAT, **survival}, 6103: {NATIONAL: FLAT, **screening}})
-        return A.locate(d, "bowel", "09").step
 
-    assert step(low, low) == "detection"
-    assert step(low, ok) == "later"
-    assert step(ok, low) == "watch"
-    assert step(ok, ok) == "none"
+def step(cancer, survival, screening):
+    spec = A.CANCERS[cancer]
+    d = make({spec["survival"]: {NATIONAL: FLAT, **survival}, spec["screening"]: {NATIONAL: FLAT, **screening}})
+    return A.locate(d, cancer, "09").step
+
+
+def test_pathway_rule_for_a_cancer_with_an_old_screening_programme():
+    assert step("breast", LOW, LOW) == "detection"
+    assert step("breast", LOW, OK) == "later"
+    assert step("breast", OK, LOW) == "watch"
+    assert step("breast", OK, OK) == "none"
+
+
+def test_bowel_survival_gap_ignores_screening_because_the_programme_is_newer_than_the_diagnoses():
+    """National bowel screening started in 2022. A 2024 survival value covers diagnoses from 2015 to 2024."""
+    assert A.screening_is_too_new("bowel", 2024) and not A.screening_is_too_new("breast", 2024)
+    assert not A.screening_is_too_new("bowel", 2031)  # the first value whose ten years all lie in the programme
+    assert step("bowel", LOW, LOW) == step("bowel", LOW, OK) == "any"
+    assert step("bowel", OK, LOW) == "watch"  # low attendance in the new programme is still an early warning
+    assert step("bowel", OK, OK) == "none"
+    d = make({3627: {NATIONAL: FLAT, **LOW}, 6103: {NATIONAL: FLAT, **LOW}})
+    p = A.locate(d, "bowel", "09")
+    assert p.label == "Detection, referral, diagnosis or treatment"
+    assert "cannot tell which step" in p.reason and "attendance" not in p.reason
+    assert any("started in 2022" in c for c in p.caveats)
+
+
+def test_rough_interval_from_a_hand_made_case():
+    """50% survival from 10 cases a year: n = 100, binomial standard error 5 points, 5.02 with the rounding."""
+    iv = A.rough_interval(50, 60, 10)
+    assert (iv.patients, iv.cases_per_year, iv.se) == (100, 10, 5.0)
+    assert (iv.low, iv.high, iv.excludes_zero) == (-19.8, -0.2, True)
+    wide = A.rough_interval(50, 55, 10)
+    assert (wide.low, wide.high, wide.excludes_zero) == (-14.8, 4.8, False)
+    assert A.rough_interval(None, 60, 10) is None and A.rough_interval(50, 60, None) is None
+
+
+def test_a_one_point_gap_never_excludes_zero_because_the_values_are_rounded():
+    iv = A.rough_interval(91, 92, 618)  # Helsinki, breast cancer: many patients, one point below
+    assert not iv.excludes_zero and iv.high > 0
+
+
+def test_pathway_is_a_question_and_its_evidence_is_the_interval_or_the_weaker_attendance():
+    nat = {y: 70 for y in range(2019, 2025)}
+    low = {"09": {y: 60 for y in range(2019, 2025)}}
+    newly_low = {"09": {2019: 75, 2020: 75, 2021: 75, 2022: 75, 2023: 60, 2024: 60}}
+    p = A.locate(make({3625: {NATIONAL: nat, **low}, 3621: {NATIONAL: nat, **low}}), "breast", "09")
+    assert (p.step, p.evidence) == ("detection", "interval_excludes_zero")
+    assert "raises a question" in p.reason and "most likely" not in p.reason
+    p = A.locate(make({3625: {NATIONAL: nat, **low}, 3621: {NATIONAL: nat, **newly_low}}), "breast", "09")
+    assert (p.step, p.evidence) == ("detection", "mixed")  # attendance was below in 2 of 6 years
+    p = A.locate(make({3625: {NATIONAL: nat, **low}, 3621: {NATIONAL: nat}}), "breast", "09")
+    assert (p.step, p.evidence) == ("later", "short")  # no attendance data for the county
+    slightly_low = {"09": {y: 68.5 for y in range(2019, 2025)}}
+    p = A.locate(make({3625: {NATIONAL: nat, **slightly_low}, 3621: {NATIONAL: nat, **low}}), "breast", "09")
+    assert (p.step, p.evidence) == ("detection", "interval_includes_zero")
+
+
+def test_the_lowest_county_gets_the_regression_to_the_mean_caveat():
+    d = make({3625: {NATIONAL: FLAT, **LOW}, 3621: {NATIONAL: FLAT, **OK}})
+    assert any("tends to look less extreme" in c for c in A.locate(d, "breast", "09").caveats)
 
 
 def test_lung_cancer_step_comes_from_national_evidence():
-    assert A.locate(make({}), "lung", "09").step == "national"
+    p = A.locate(make({}), "lung", "09")
+    assert (p.step, p.evidence) == ("national", "national")
 
 
 def test_simulation():

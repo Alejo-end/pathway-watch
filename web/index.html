@@ -63,7 +63,7 @@ main { display: grid; grid-template-columns: minmax(300px, 400px) minmax(0, 1fr)
 .query option { font-size: 16px; font-weight: 400; color: #000; }
 #sizer { position: absolute; visibility: hidden; white-space: pre; }
 
-/* The care pathway drawn as a line with four stops. The likely stops are marked. */
+/* The care pathway drawn as a line with four stops. The stops that the question is about are marked. */
 .route { display: grid; grid-template-columns: repeat(4, 1fr); margin: 6px 0 4px; }
 .stop { position: relative; padding-top: 26px; font-size: 14px; font-weight: 600; color: var(--muted); padding-right: 10px; }
 .stop::before { content: ""; position: absolute; left: 0; right: 0; top: 8px; height: 6px; background: var(--ink); }
@@ -159,6 +159,20 @@ table.g3 th { font-size: 13px; color: var(--muted); font-weight: 600; border-bot
 .bars { display: grid; grid-template-columns: 124px 1fr 40px; gap: 4px 10px; align-items: center; font-size: 13px; }
 .bars .t { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--ink); }
 .empty { border: 2px dashed var(--muted); background: transparent; }
+/* Timeline: one bar per route, on one scale of days. A segment is one step, coloured by who owns it. */
+.tl { display: grid; grid-template-columns: minmax(110px, 190px) 1fr 76px; gap: 10px 14px; align-items: center; font-size: 14px; margin: 6px 0 12px; }
+.tl .who { font-weight: 600; line-height: 1.2; }
+.tl .who small { display: block; font-weight: 400; color: var(--muted); font-size: 13px; }
+.tl .bar2 { display: flex; height: 34px; gap: 2px; }
+.tl .sg { display: flex; align-items: center; justify-content: center; min-width: 3px; color: #fff; font-size: 12.5px; font-weight: 700; overflow: hidden; white-space: nowrap; }
+.sg.patient, .legend i.patient { background: var(--muted); }
+.sg.primary, .legend i.primary { background: var(--below); }
+.sg.hospital, .legend i.hospital { background: var(--accent); color: var(--on-accent); }
+.tl .tot { font-weight: 800; font-size: 20px; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.tl .tot small { display: block; font-size: 12px; font-weight: 400; color: var(--muted); letter-spacing: 0; }
+@media (max-width: 600px) { .tl { grid-template-columns: 1fr 64px; } .tl .who { grid-column: 1 / -1; } }
+.tablewrap { overflow-x: auto; }
+td.extra { font-weight: 700; }
 .lead { font-size: 17px; font-weight: 500; margin: 0 0 14px; max-width: 70ch; }
 .sources ol { margin: 0; padding-left: 26px; font-size: 13.5px; max-width: 90ch; }
 .sources li { margin-bottom: 6px; padding: 1px 4px; }
@@ -194,6 +208,10 @@ footer { border-top: 3px solid var(--rule); color: var(--muted); font-size: 13px
       <div class="action" id="action"></div>
       <div class="more" id="morewrap"><ul class="rows" id="more"></ul></div>
     </section>
+    <section class="panel" id="timeline">
+      <h2>Where the days add up on the way to treatment</h2>
+      <div id="timelinebody"></div>
+    </section>
     <section class="panel" id="national">
       <h2 id="nationaltitle">Where to start in Finland</h2>
       <div id="nationalbody"></div>
@@ -209,12 +227,20 @@ footer { border-top: 3px solid var(--rule); color: var(--muted); font-size: 13px
       </section>
     </div>
     <section class="panel" id="channel">
-      <h2>Who depends on the slower public route to a diagnosis</h2>
+      <h2>Who depends on public health centres for the first visit</h2>
       <div id="channelbody"></div>
+    </section>
+    <section class="panel" id="equity">
+      <h2>Income and education: a gap this page cannot show for a county</h2>
+      <div id="equitybody"></div>
     </section>
     <section class="panel" id="mirror">
       <h2>The waiting-time picture Sweden publishes and Finland does not</h2>
       <div id="mirrorbody"></div>
+    </section>
+    <section class="panel" id="pilot">
+      <h2>What a county pilot measures with its own records</h2>
+      <div id="pilotbody"></div>
     </section>
     <section class="panel missing">
       <h2>Data that is missing, and the measure that would collect it</h2>
@@ -230,17 +256,17 @@ footer { border-top: 3px solid var(--rule); color: var(--muted); font-size: 13px
     </section>
   </div>
 </main>
-<footer>Public aggregate data only. Code computes every number, and each one links to its source. In the three summary sentences, a sentence is removed before display if it cites no fact, or if it holds a number that its facts do not.</footer>
+<footer>A planning tool for a county. It gives no advice about one patient. Public aggregate data only. Code computes every number, and each one links to its source. In the three summary sentences, a sentence is removed before display if it cites no fact, or if it holds a number that its facts do not.</footer>
 <div id="tip"></div><span id="sizer" class="query"></span>
 <script>
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-let META, GEO, HL, state = { cancer: "bowel", county: "09", layer: "survival" }, sourceOrder = [];
+let META, GEO, HL, EV, state = { cancer: "bowel", county: "09", layer: "survival" }, sourceOrder = [];
 try { const saved = JSON.parse(localStorage.getItem("pw") || "{}"); Object.assign(state, saved); } catch (e) {}
 const save = () => { try { localStorage.setItem("pw", JSON.stringify({cancer: state.cancer, county: state.county})); } catch (e) {} };
 
 async function init() {
-  [META, GEO, HL] = await Promise.all([fetch("/api/meta").then(r => r.json()), fetch("/counties.geojson").then(r => r.json()), fetch("/api/headlines").then(r => r.json())]);
+  [META, GEO, HL, EV] = await Promise.all(["/api/meta", "/counties.geojson", "/api/headlines", "/api/evidence"].map(u => fetch(u).then(r => r.json())));
   $("#cancer").innerHTML = Object.entries(META.cancers).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join("");
   $("#county").innerHTML = META.counties.slice().sort((a, b) => a.name.localeCompare(b.name)).map(c => `<option value="${c.code}">${esc(c.name)}</option>`).join("");
   $("#cancer").value = state.cancer; $("#county").value = state.county;
@@ -294,11 +320,11 @@ async function drawNational() {
   }).join("");
   $("#nationalbody").innerHTML = `
     <p class="lead">${n.registers > 1
-      ? `${n.rows.length} of ${n.counties} counties are behind Finland with confidence in at least one register: survival, screening or deaths${[...srcs].map(cite).join("")}. Counties behind in more than one come first.`
-      : `${n.rows.length} of ${n.counties} counties have more deaths than their age structure predicts, with confidence${[...srcs].map(cite).join("")}. Deaths are the only county register for this cancer.`} The badge is each county's first action.</p>
+      ? `${n.rows.length} of ${n.counties} counties are behind Finland in at least one register${[...srcs].map(cite).join("")}. Survival counts when the county is below Finland now and our rough 95% interval of the gap excludes zero${cite("survival_interval")}. Attendance in the public screening programme counts when the county is below Finland now and in most published years. Deaths count when the 95% interval is above 100. Counties behind in more than one register come first.`
+      : `${n.rows.length} of ${n.counties} counties have more deaths than their age structure predicts, with a 95% interval above 100${[...srcs].map(cite).join("")}. Deaths are the only county register for this cancer.`} The badge is each county's first action.</p>
     <p class="caveat" style="margin:0 0 10px">${groups}</p>
     <ul class="rank">${rows}</ul>
-    <p class="caveat">${n.without_signal} counties show no confident signal.${n.registers > 1 ? " A filled dot is one register in which the county is behind." : ""}</p>`;
+    <p class="caveat">${n.without_signal} counties show no such signal.${n.registers > 1 ? " A filled dot is one register in which the county is behind." : ""} Survival and deaths for one cancer are related, so two dots are not two separate proofs.</p>`;
   $("#nationalbody").querySelectorAll("button").forEach(b => b.onclick = () => { state.county = b.dataset.c; save(); render(); window.scrollTo({ top: 0 }); });
   drawSources();
 }
@@ -333,6 +359,7 @@ function project(features, W, H) {
     const [x, y] = pt(c); return ((x - minX) * s).toFixed(1) + "," + ((y - minY) * s).toFixed(1);
   }).join("L") + "Z").join("")).join("") };
 }
+const signed = v => (v > 0 ? "+" : "") + v;
 function colorFor(d, strongAt = 3) {
   if (!d || d.gap == null) return "var(--nodata)";
   if (d.direction === "near") return "var(--near)";
@@ -351,7 +378,11 @@ async function drawMap() {
   $("#mapsvg").innerHTML = `<svg viewBox="0 0 ${P.w.toFixed(0)} ${P.h.toFixed(0)}" role="img" aria-label="Map of counties">${
     feats.map(f => {
       const c = f.properties.hyvinvointialue, d = layer.counties[c];
-      return `<path d="${P.path(f)}" data-c="${c}" fill="${colorFor(d, mortality ? 10 : 3)}" class="${c === state.county ? "sel" : ""} ${d.confidence === "low" ? "low" : ""}"></path>`;
+      // Dashed: our rough interval of the survival gap includes zero, the county is not on the same side in
+      // most years (attendance), or the 95% interval includes 100 (deaths).
+      const weak = d.interval ? !d.interval.excludes_zero
+        : d.persistence ? d.persistence !== "persistent" : d.confidence != null && d.confidence !== "high";
+      return `<path d="${P.path(f)}" data-c="${c}" fill="${colorFor(d, mortality ? 10 : 3)}" class="${c === state.county ? "sel" : ""} ${weak ? "low" : ""}"></path>`;
     }).join("")}</svg>`;
   const sel = $(`#mapsvg path[data-c="${state.county}"]`); if (sel) sel.parentNode.appendChild(sel);
   const tip = $("#tip");
@@ -363,8 +394,11 @@ async function drawMap() {
       tip.innerHTML = chan
         ? `<b>${esc(d.name)}</b><br>${d.latest}% of working-age visits public, ${d.year}<br>${d.public} public and ${d.occupational} occupational visits per 1000`
         : mortality
-        ? `<b>${esc(d.name)}</b><br>SMR ${d.latest} in ${d.year}<br>95% interval ${d.low}–${d.high}<br>${d.confidence} confidence`
-        : `<b>${esc(d.name)}</b><br>${d.latest ?? "–"}% in ${d.year ?? "–"}<br>${d.gap == null ? "no data" : (d.gap > 0 ? "+" : "") + d.gap + " points vs Finland, 3-year average"}<br>${d.confidence} confidence`;
+        ? `<b>${esc(d.name)}</b><br>SMR ${d.latest} in ${d.year}<br>95% interval ${d.low} to ${d.high}<br>${d.confidence === "high" ? "significant: the interval excludes 100" : "not significant: the interval includes 100"}`
+        : d.gap == null ? `<b>${esc(d.name)}</b><br>no data`
+        : `<b>${esc(d.name)}</b><br>${d.latest}% in ${d.year}<br>${signed(d.gap)} points against Finland in ${d.year}`
+          + (d.interval ? `<br>our rough 95% interval: ${signed(d.interval.low)} to ${signed(d.interval.high)} points` : "")
+          + `<br>same side in ${d.years_same_side} of ${d.n_years} years`;
     };
     p.onmouseleave = () => tip.style.display = "none";
   });
@@ -379,16 +413,18 @@ async function drawMap() {
     $("#legend").innerHTML = `
       <span><i style="background:var(--below)"></i>10%+ more deaths than expected</span><span><i style="background:var(--below-soft)"></i>less than 10% more</span>
       <span><i style="background:var(--near)"></i>as expected</span><span><i style="background:var(--above-soft)"></i>less than 10% fewer</span>
-      <span><i style="background:var(--above)"></i>10%+ fewer</span><span><i style="border:1px dashed var(--muted)"></i>low confidence</span>
+      <span><i style="background:var(--above)"></i>10%+ fewer</span><span><i style="border:1px dashed var(--muted)"></i>95% interval includes 100</span>
       <span style="flex-basis:100%">${esc(layer.label)} deaths against the number expected from the county's age structure (SMR), ${esc(Object.values(layer.counties)[0].year)}. Data: Statistics Finland.</span>`;
     return;
   }
-  const what = state.layer === "survival" ? "five-year survival" : "screening attendance";
+  const survival = state.layer === "survival";
   $("#legend").innerHTML = `
     <span><i style="background:var(--below)"></i>3+ points below</span><span><i style="background:var(--below-soft)"></i>1–3 below</span>
     <span><i style="background:var(--near)"></i>near Finland</span><span><i style="background:var(--above-soft)"></i>1–3 above</span>
-    <span><i style="background:var(--above)"></i>3+ above</span><span><i style="border:1px dashed var(--muted)"></i>low confidence</span>
-    <span style="flex-basis:100%">County ${what} against Finland, 3-year average. Map: Statistics Finland. Data: THL Sotkanet ${ind}.</span>`;
+    <span><i style="background:var(--above)"></i>3+ above</span><span><i style="border:1px dashed var(--muted)"></i>${survival ? "our rough 95% interval includes zero" : "not on the same side in most years"}</span>
+    <span style="flex-basis:100%">${survival
+      ? "County five-year survival against Finland in the latest year. Sotkanet publishes no interval. The dashed outline uses our rough estimate from patient counts."
+      : "County attendance in the public screening programme against Finland in the latest year. A test in occupational or private care is not counted."} Map: Statistics Finland. Data: THL Sotkanet ${ind}.</span>`;
 }
 
 // ---------- briefing ----------
@@ -410,32 +446,81 @@ async function drawBriefing() {
   $("#writer").innerHTML = (B.summary.writer === "model" ? "Worded by the language model from computed facts." : "Written from computed facts by a fixed template.")
     + (B.summary.removed.length ? ` <span class="removed">${B.summary.removed.length} sentence(s) removed: no source.</span>` : "");
   $("#caveats").textContent = B.pathway.caveats.join(" ");
-  drawNational(); drawChannel(); drawGoal3(); drawMirror(); drawChart(); drawAction(); drawSim(); drawMissing(); drawSources();
+  drawTimeline(); drawPilot(); drawEquity(); drawNational(); drawChannel(); drawGoal3(); drawMirror(); drawChart(); drawAction(); drawSim(); drawMissing(); drawSources();
 }
 
-// The care pathway as a line with four stops. Which stops are marked follows from the located step.
+// The care pathway as a line with four stops. The marked stops are the ones the question is about.
 const STOPS = ["Detection", "Referral", "Diagnosis", "Treatment"];
-const MARKED = { detection: [0], watch: [0], later: [1, 2, 3], national: [0, 2], none: [], unknown: [] };
+const MARKED = { detection: [0], watch: [0], later: [1, 2, 3], any: [0, 1, 2, 3], national: [0, 2], none: [], unknown: [] };
+// What stands behind the question. For a survival gap: our rough 95% interval from patient counts, not a published one.
+// For attendance: how the gap has behaved over the published years, a description and not a test.
+const EVIDENCE = { interval_excludes_zero: "rough interval excludes zero", interval_includes_zero: "rough interval includes zero",
+  persistent: "seen in most years", mixed: "years disagree", short: "few years of data", national: "national evidence" };
 function drawRoute() {
   const p = B.pathway, marked = MARKED[p.step] || [];
   const cls = p.step === "watch" ? "warn" : "hit";
   $("#route").innerHTML = STOPS.map((name, i) => `<div class="stop ${marked.includes(i) ? cls : ""} ${cls === "hit" && marked.includes(i) && marked.includes(i + 1) ? "seg" : ""}">${name}</div>`).join("");
-  const lead = { none: "No gap found on the pathway.", unknown: "Not enough data to place a gap.", watch: "Early warning at" }[p.step] || "The gap most likely starts at";
+  const lead = { none: "No survival gap found.", unknown: "Not enough data to ask a pathway question.", watch: "Early warning. Question to investigate:" }[p.step] || "Question to investigate:";
   const where = ["none", "unknown"].includes(p.step) ? "" : ` <b>${esc(p.label[0].toLowerCase() + p.label.slice(1))}</b>.`;
-  $("#verdict").innerHTML = `${lead}${where} <span class="badge ${p.confidence}">${p.confidence} confidence</span>`;
+  $("#verdict").innerHTML = `${lead}${where} <span class="badge ${["persistent", "interval_excludes_zero"].includes(p.evidence) ? "high" : ""}">${EVIDENCE[p.evidence] || esc(p.evidence)}</span>`;
 }
 
 function drawHeadlines() {
   const h = HL, sc = h.screening, nd = h.nordic;
   $("#headlines").innerHTML = `
-    <div class="hl-card"><div class="k">Referral</div><div class="n">2× longer</div>
-      Diagnosis took twice as long through public health care in a lymphoma study${cite("roadmap")}. ${h.channel.national}% of working-age doctor visits are public; ${esc(h.channel.most)} is highest at ${h.channel.most_share}%${cite("sotkanet:293")}.</div>
+    <div class="hl-card"><div class="k">Referral</div><div class="n">127 against 76 days</div>
+      Median time from first symptoms to treatment in a Finnish study of 160 lymphoma patients: first contact at a public health centre against private or occupational care${cite("kuitunen_2026")}. The public group was older. ${h.channel.national}% of working-age doctor visits are public; ${esc(h.channel.most)} is highest at ${h.channel.most_share}%${cite("sotkanet:293")}.</div>
     <div class="hl-card"><div class="k">Detection</div><div class="n">${esc(sc[0].lowest)}</div>
-      Lowest attendance in ${esc(sc[0].cancer.toLowerCase())} screening (${sc[0].value}%)${cite(sc[0].source)} and ${esc(sc[1].lowest === sc[0].lowest ? "also in" : sc[1].lowest + " lowest in")} ${esc(sc[1].cancer.toLowerCase())} screening (${sc[1].value}%)${cite(sc[1].source)}, ${sc[1].year}. The strategy sets ${sc[0].target}% in every county${cite("strategy")}: ${sc[0].below_target === sc[0].n ? "no county reaches it" : sc[0].below_target + " of " + sc[0].n + " counties miss it"} for bowel screening.</div>
+      Lowest attendance in the public ${esc(sc[0].cancer.toLowerCase())} screening programme (${sc[0].value}%)${cite(sc[0].source)} and ${esc(sc[1].lowest === sc[0].lowest ? "also in" : sc[1].lowest + " lowest in")} the ${esc(sc[1].cancer.toLowerCase())} programme (${sc[1].value}%)${cite(sc[1].source)}, ${sc[1].year}. ${sc.map(x => `${esc(x.cancer)} programme: ${esc(x.lowest)} was lowest in ${x.lowest_years} of ${x.n_years} published years.`).join(" ")} The figures count the public programmes only. A Finnish study found mammograms outside the programme, most among upper-level employees${cite("fuhrmann_2024")}. The strategy sets ${sc[0].target}% in every county${cite("strategy")}: ${sc[0].below_target === sc[0].n ? "no county reaches it" : sc[0].below_target + " of " + sc[0].n + " counties miss it"} for bowel screening.</div>
     <div class="hl-card"><div class="k">Outcome</div><div class="n">${nd[0].gap} points</div>
       Five-year survival for ${esc(nd[0].label.toLowerCase())} in Finland against the Nordic level. ${nd.slice(1).map(b => `${esc(b.label)} ${b.gap}`).join(", ")}${cite("nordcan")}.</div>
     <div class="hl-card"><div class="k">Data gap</div><div class="n">${h.mirror.regions} vs 0</div>
       Sweden reports treatment within target time for all ${h.mirror.regions} regions (${h.mirror.sweden}% in 2025)${cite("rcc_svf_2025")}. Finland reports it for none of its ${h.mirror.finland_counties} counties.</div>`;
+}
+
+// The lymphoma study, step by step. One bar per route on the same scale of days.
+const OWNER_CLASS = { patient: "patient", "primary care": "primary", hospital: "hospital" };
+function drawTimeline() {
+  const t = EV.timeline, o = t.by_owner, max = t.total.public;
+  const bar = k => t.steps.map(s => { const d = s[k + "_days"];
+    return `<div class="sg ${OWNER_CLASS[s.owner]}" style="flex:${Math.max(d, 0.1)} 1 0" title="${esc(s.name)}: ${d} days">${d >= 14 ? d : ""}</div>`; }).join("");
+  const row = k => `<div class="who">${esc(t.groups[k].label)}<small>${t.groups[k].patients} patients</small></div>
+    <div><div class="bar2" style="width:${t.total[k] / max * 100}%">${bar(k)}</div></div>
+    <div class="tot">${t.total[k]}<small>days</small></div>`;
+  const rows = t.steps.map(s => `<tr><td>${esc(s.name)}</td><td class="num">${s.public_days}</td><td class="num">${s.private_days}</td>
+    <td class="num extra">${s.extra > 0 ? "+" + s.extra : s.extra}</td><td>${esc(s.owner[0].toUpperCase() + s.owner.slice(1))}</td></tr>`).join("");
+  $("#timelinebody").innerHTML = `
+    <p class="lead">In one Finnish study of lymphoma patients, the route through a public health centre took ${t.total.extra} days longer than the route through private or occupational care. ${o.patient.extra} of these days passed before the first contact, ${o["primary care"].extra} in primary care, and ${o.hospital.extra} between the referral and the start of treatment.${cite(t.source)}</p>
+    <div class="tl">${row("public")}${row("private")}</div>
+    <div class="legend"><span><i class="patient"></i>Before the first contact</span><span><i class="primary"></i>Primary care: first contact to referral</span><span><i class="hospital"></i>Hospital: referral to start of treatment</span></div>
+    <div class="tablewrap"><table class="g3" style="margin-top:16px"><thead><tr><th>Step</th><th>Public health centre, days</th><th>Private or occupational, days</th><th>Extra days, public</th><th>Who owns the step</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <p class="caveat">${esc(EV.timeline.outcome.text)}${cite(EV.timeline.outcome.source)}</p>
+    <p class="caveat">Limits: one lymphoma type and 160 patients. The public group was older. The patients gave the date of the first symptoms themselves. The paper tests the whole interval only (p = ${t.p_value_total}), not each step. Its medians for the whole interval are ${t.groups.public.median_total} and ${t.groups.private.median_total} days. The days above are from figure 1 of the paper, and the app computes the length of each step from them. So the picture shows where the days add up in this study. It does not show the cause, and it does not describe other cancers or ${esc(B.county.name)}.</p>`;
+}
+
+// What the tool computes after a county connects its own records. The demo uses public data only.
+function drawPilot() {
+  const p = EV.pilot, t = EV.timeline;
+  const rows = t.steps.map((s, i) => `<li><span class="line none">${i + 1}</span><div>${esc(s.name)}<small>${esc(s.record)} In the lymphoma study: ${s.public_days} days through a public health centre, ${s.private_days} through private or occupational care.</small></div></li>`).join("");
+  $("#pilotbody").innerHTML = `
+    <p class="lead">No public source gives these five intervals for any county. A county holds most of the dates in its own records. ${esc(p.basis)}${cite(p.basis_source)}</p>
+    <ul class="rows">${rows}</ul>
+    <p class="target">${esc(p.output)}</p>
+    <p class="caveat">${esc(p.legal)} The records named above are our reading of the registers, and the county confirms the fields. ${esc(p.host)}${cite(p.host_source)} The study values come from one lymphoma study${cite(t.source)}.</p>`;
+}
+
+function drawEquity() {
+  const e = EV.equity, st = e.study, r = e.route;
+  const ci = v => `${v[0].toFixed(2)} to ${v[1].toFixed(2)}`;
+  const rows = st.rows.map(x => `<tr><td>${esc(x.step)}</td><td>${esc(x.what)}</td>
+    <td class="num"><b>+${x.men_more}%</b> <span style="color:var(--muted)">(${x.men.toFixed(2)}, ${ci(x.men_ci)})</span></td>
+    <td class="num"><b>+${x.women_more}%</b> <span style="color:var(--muted)">(${x.women.toFixed(2)}, ${ci(x.women_ci)})</span></td></tr>`).join("");
+  $("#equitybody").innerHTML = `
+    <p class="lead">Patients with lower education are behind at each step of the pathway. A register study of ${st.patients.toLocaleString("en")} Finnish patients, diagnosed in ${esc(st.period)}, compared them with patients with higher education.${cite(st.source)}</p>
+    <div class="tablewrap"><table class="g3"><thead><tr><th>Step</th><th>Lower against higher education</th><th>Men</th><th>Women</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <p class="target">${esc(st.treatment)}${cite(st.source)}</p>
+    <p class="caveat">Income also goes with the route into care. In the lymphoma study, ${r.high_income_private}% of the patients who started in private or occupational care earned more than 5000 euros a month, against ${r.high_income_public}% of the patients who started at a public health centre. ${r.low_income_public}% of the public group earned less than 1500 euros, against ${r.low_income_private}%.${cite(r.source)}</p>
+    <p class="caveat">${esc(e.missing)} In the table, the brackets hold the ratio and its 95% interval.</p>`;
 }
 
 function drawChannel() {
@@ -455,7 +540,7 @@ function drawChannel() {
         <span style="color:var(--muted)">Private visits</span><div class="bar"><span style="width:${c.private_share}%"></span></div><span>${c.private_share ?? "–"}%</span>
       </div>
     </div>
-    <p class="caveat">Visits per 1000 people aged 15–64: ${c.public_visits} public, ${c.occupational_visits} occupational${src("channel.visits")}. Private: share of all residents with a Kela-reimbursed private doctor visit${cite("sotkanet:692")}. This measures channel use, not coverage: no public source gives occupational health coverage per county. Most cancer patients are over 65 and outside occupational health, so they depend on the public channel everywhere. The county pattern does not track survival in this data, so read it as exposure to the delay, not as its cause.</p>`;
+    <p class="caveat">Visits per 1000 people aged 15–64: ${c.public_visits} public, ${c.occupational_visits} occupational${src("channel.visits")}. Private: share of all residents with a Kela-reimbursed private doctor visit${cite("sotkanet:692")}. This measures channel use, not coverage: no public source gives occupational health coverage per county. Most cancer patients are over 65 and outside occupational health, so they depend on the public channel everywhere. The county pattern does not track survival in this data, so read it as a description of who uses which channel, not as proof of a delay.</p>`;
 }
 
 function drawMirror() {
@@ -465,7 +550,7 @@ function drawMirror() {
   const can = m.cancer ? ` For ${esc(B.cancer.label.toLowerCase())} (${esc(m.cancer.svf)}), ${m.cancer.share}% of ${m.cancer.n.toLocaleString("en")} Swedish patients started treatment within the lead time in 2025.${cite(m.source)}` : "";
   const prop = m.proposal.map(p => `<li><span class="line">${esc(p.measure)}</span><div>${esc(p.action)}${cite("roadmap")}<small>Roadmap page ${p.page}. Who acts: ${esc(p.actor)}.</small></div></li>`).join("");
   $("#mirrorbody").innerHTML = `
-    <p class="lead">Sweden measures, for every region, the share of patients who start treatment within the target time of their cancer pathway. In 2025 it was ${m.national["2025"].share}% nationally against a target of ${m.target}%, and ranged from ${m.regions[0]["2025"]}% in ${esc(m.regions[0].region)} to ${m.regions.at(-1)["2025"]}% in ${esc(m.regions.at(-1).region)}.${cite(m.source)}${can}</p>
+    <p class="lead">Sweden measures, for every region, the share of patients who start treatment within the target time of their cancer pathway. In 2025 it was ${m.national["2025"].share}% nationally against a target of ${m.target}%, and ranged from ${m.regions[0]["2025"]}% in ${esc(m.regions[0].region)} to ${m.regions.at(-1)["2025"]}% in ${esc(m.regions.at(-1).region)}.${cite(m.source)}${can} ${esc(m.delay.text)}${cite(m.delay.source)}</p>
     <div class="split">
       <div><h3 class="sub" style="margin-top:0">Sweden, 2025</h3><div class="bars">${rows}</div><p class="caveat">Line: the ${m.target}% target.</p></div>
       <div><h3 class="sub" style="margin-top:0">Finland, any year</h3><div class="bars">${fin}<span style="color:var(--muted)">… ${m.finland_counties - 6} more</span><span></span><span></span></div>
@@ -478,22 +563,23 @@ function drawGoal3() {
   const g = B.goal3;
   if (!g) { $("#goal3").style.display = "none"; return; }
   $("#goal3").style.display = "";
-  const word = { worse: "more than expected", better: "fewer than expected", near: "as expected" };
-  const rows = g.rows.map(r => `<tr>
+  const word = { worse: "more than expected", better: "fewer than expected" };
+  // Only a 95% interval that leaves out 100 supports "more" or "fewer".
+  const rows = g.rows.map(r => { const sig = r.confidence === "high"; return `<tr>
       <td>${esc(r.label)}</td><td class="num">${Math.round(r.deaths_per_year)}</td>
       <td class="num"><b>${r.smr}</b> <span style="color:var(--muted)">(${r.low}–${r.high})</span></td>
-      <td><span class="pill ${r.direction}">${word[r.direction]}</span></td><td>${r.confidence}</td></tr>`).join("");
+      <td><span class="pill ${sig ? r.direction : "near"}">${sig ? word[r.direction] : "within the expected range"}</span></td><td>${sig ? "yes" : "no"}</td></tr>`; }).join("");
   const t = B.facts[g.target_fact];
   const surv = g.survival.map(b => `<tr><td>${esc(b.label)}</td><td class="num">${b.finland != null ? b.finland + "%" : "not read yet"}</td>
       <td class="num">${b.nordic ?? (b.sweden != null ? b.sweden + "% (Sweden only)" : "–")}${b.nordic != null ? "%" : ""}</td>
       <td class="num">${b.gap ?? "–"}</td><td class="num">${b.target != null ? "+" + b.target + " points" : ""}</td></tr>`).join("");
-  $("#goal3body").innerHTML = `<table class="g3"><thead><tr><th>Cancer</th><th>Deaths per year</th><th>SMR (95% interval)</th><th></th><th>Confidence</th></tr></thead>
+  $("#goal3body").innerHTML = `<table class="g3"><thead><tr><th>Cancer</th><th>Deaths per year</th><th>SMR (95% interval)</th><th></th><th>Significant</th></tr></thead>
     <tbody>${rows}</tbody></table>
     <div class="target">${esc(t.text)}.${cite(g.source)}${cite("strategy")}</div>
     <h3 class="sub">Five-year survival in Finland against the Nordic level${cite("nordcan")}</h3>
     <table class="g3"><thead><tr><th>Cancer</th><th>Finland</th><th>Nordic level</th><th>Gap (points)</th><th>Goal 3 target${cite("strategy")}</th></tr></thead><tbody>${surv}</tbody></table>
     <p class="caveat">National values only. NORDCAN gives no county split. Survival for patients diagnosed ${esc(g.survival[0].period)}, both sexes weighted by cases.</p>
-    <p class="caveat">SMR 100 means as many deaths as the county's age structure predicts. Years ${g.rows[0].years[0]}–${g.rows[0].years.at(-1)} pooled. Lung, pancreatic and liver cancer are the poor-prognosis cancers in Goal 3, indicator 1.${cite(g.source)}</p>`;
+    <p class="caveat">SMR 100 means as many deaths as the county's age structure predicts. Significant means that the 95% interval excludes 100. With ${META.counties.length} counties, about one county per cancer crosses a 95% limit by chance. Years ${g.rows[0].years[0]} to ${g.rows[0].years.at(-1)} pooled. Lung, pancreatic and liver cancer are the poor-prognosis cancers in Goal 3, indicator 1.${cite(g.source)}</p>`;
 }
 
 function drawChart() {
@@ -520,8 +606,10 @@ function drawChart() {
   svg += line(national, "var(--muted)") + line(c.county, "var(--accent)") + "</svg>";
   $("#chartsvg").innerHTML = svg;
   $("#charttitle").innerHTML = `Five-year survival, ${esc(B.cancer.label.toLowerCase())}${cite(c.source)}`;
+  const iv = c.interval;
+  const rough = iv ? `<span style="flex-basis:100%">Gap in ${c.year}: ${signed(c.gap)} points. Our rough 95% interval: ${signed(iv.low)} to ${signed(iv.high)} points, from about ${iv.patients} patients${cite("survival_interval")}. It is not a published interval, and the true interval is wider. ${esc(B.county.name)} was on the same side of Finland in ${c.years_same_side} of ${c.n_years} published years. That count is a description, not a test.</span>` : "";
   $("#chartlegend").innerHTML = `<span><i style="background:var(--accent)"></i>${esc(B.county.name)}</span><span><i style="background:var(--muted)"></i>Finland</span>` +
-    `<span style="flex-basis:100%">${nordicLine(B.nordic)}</span>`;
+    rough + `<span style="flex-basis:100%">${nordicLine(B.nordic)}</span>`;
 }
 
 function nordicLine(b) {
@@ -541,16 +629,18 @@ function drawAction() {
     <div class="meta"><span class="line">${esc(first.measure)}</span>&nbsp; Roadmap measure, ${page(first)}${cite("roadmap")}. <span class="level">${LEVEL[first.level]}.</span></div>
     <div class="what">${esc(first.action)}</div>
     ${first.detail ? `<div class="detail">${esc(first.detail)}</div>` : ""}
+    ${first.note ? `<div class="detail">${esc(first.note)}${first.note_sources.map(cite).join("")} This note is our reading of the studies, not roadmap text.</div>` : ""}
     ${first.nordic ? `<div class="meta" style="margin-top:8px">Nordic model: ${esc(first.nordic)}</div>` : ""}
     ${first.priority ? `<div class="meta" style="margin-top:8px">Counties with significantly more ${esc(B.cancer.label.toLowerCase())} deaths than their age structure predicts: ${first.priority.map(p => `${esc(p.county)} (SMR ${p.smr})`).join(", ")}${cite(first.priority_source)}</div>` : ""}
     <dl>
-      <dt>First step</dt><dd>${esc(first.first_step)}${cite("roadmap")}</dd>
+      <dt>Start locally</dt><dd>${esc(first.local.text)}${cite("local_step")}${first.local.evidence ? ` ${esc(first.local.evidence)}${cite(first.local.evidence_source)}` : ""} This step is our proposal for one health centre or one county. It is not roadmap text.</dd>
+      <dt>Roadmap step</dt><dd>${esc(first.first_step)}${cite("roadmap")}</dd>
       <dt>Success is</dt><dd>${esc(first.success)}${cite(first.success_source)}</dd>
       <dt>Who acts</dt><dd>${esc(first.actor)}</dd>
       <dt>Why here</dt><dd>${esc(first.why)}${first.evidence.map(id => cite(B.facts[id].source)).filter((v, i, a) => a.indexOf(v) === i).join("")}</dd>
     </dl>`;
   $("#morewrap").style.display = rest.length ? "" : "none";
-  $("#more").innerHTML = rest.map(r => `<li><span class="line">${esc(r.measure)}</span><div>${esc(r.action)}${cite("roadmap")}<small>${LEVEL[r.level]}. Roadmap ${page(r)}. Who acts: ${esc(r.actor)}. Success is: ${esc(r.success[0].toLowerCase() + r.success.slice(1))}${cite(r.success_source)}</small></div></li>`).join("");
+  $("#more").innerHTML = rest.map(r => `<li><span class="line">${esc(r.measure)}</span><div>${esc(r.action)}${cite("roadmap")}<small>${LEVEL[r.level]}. Roadmap ${page(r)}. Who acts: ${esc(r.actor)}. Success is: ${esc(r.success[0].toLowerCase() + r.success.slice(1))}${cite(r.success_source)} Start locally: ${esc(r.local.text)}${cite("local_step")}</small></div></li>`).join("");
 }
 
 function drawSmrChart() {
@@ -590,7 +680,7 @@ function drawSim() {
       ? `more of ${esc(B.county.name)}'s yearly ${label} patients alive after five years, if national survival closes ${pct}% of the gap to the Nordic level (${s.start}% to ${reached}%)${cite(s.source)}.${s.target ? ` Goal 3 asks for +${s.target} points${cite("strategy")}.` : ""}`
       : `more people alive five years after diagnosis, for each year's patients, if the county closes ${pct}% of its gap (${s.start}% to ${reached}%)${cite(s.source)}.`;
   }
-  $("#simnote").innerHTML = `Estimate. About ${s.cases.value} new cases per year: ${esc(s.cases.method)}${cite(s.cases.source)}. It ignores the age structure of the county.`;
+  $("#simnote").innerHTML = `<b>An illustration of the size of the gap, not a forecast.</b> ${nordic ? `Survival describes patients diagnosed in ${esc(s.period)}.` : "Survival describes patients diagnosed up to ten years ago."} About ${s.cases.value} new cases per year, an estimate: ${esc(s.cases.method)}${cite(s.cases.source)}. It ignores the age structure of the county.`;
   drawSources();
 }
 

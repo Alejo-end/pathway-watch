@@ -4,7 +4,7 @@ from __future__ import annotations
 
 NATIONAL = "358"  # Sotkanet code for the whole country
 EXCLUDED = {"91"}  # Åland is not a wellbeing services county and has gaps in the data
-WINDOW = 3  # years averaged for a gap, and years pooled for mortality
+WINDOW = 3  # years pooled for mortality, because yearly death counts for one cancer are small
 
 POPULATION = 127  # population on 31 December
 
@@ -13,19 +13,23 @@ SOTKANET: dict[int, tuple[str, int, int]] = {
     3627: ("Five-year survival, bowel cancer", 2015, 2024),
     3625: ("Five-year survival, breast cancer", 2015, 2024),
     3626: ("Five-year survival, cervical cancer", 2015, 2024),
-    6103: ("Bowel screening attendance", 2022, 2024),
-    3621: ("Breast screening attendance", 2015, 2024),
-    3620: ("Cervical screening attendance", 2015, 2024),
+    6103: ("Attendance in the public bowel screening programme", 2022, 2024),
+    3621: ("Attendance in the public breast screening programme", 2015, 2024),
+    3620: ("Attendance in the public cervical screening programme", 2015, 2024),
     2371: ("Occupational health physician visits per 1000 aged 15-64", 2020, 2024),
     293: ("Public primary care physician visits per 1000 aged 15-64", 2020, 2024),
     692: ("Kela-reimbursed private physician visits, % of population", 2020, 2024),
     POPULATION: ("Population on 31 December", 2024, 2024),
 }
 
+# One Sotkanet survival value covers the patients diagnosed in its year and in the nine years before it.
+SURVIVAL_WINDOW_YEARS = 10
+
 # A cancer with county survival and screening indicators gets the county rule.
 # Lung cancer has neither, so its view uses county mortality and national survival.
+# `screening_started` is the first year of a national programme that is younger than the survival window.
 CANCERS = {
-    "bowel": {"label": "Bowel cancer", "survival": 3627, "screening": 6103},
+    "bowel": {"label": "Bowel cancer", "survival": 3627, "screening": 6103, "screening_started": 2022},
     "breast": {"label": "Breast cancer", "survival": 3625, "screening": 3621},
     "cervical": {"label": "Cervical cancer", "survival": 3626, "screening": 3620},
     "lung": {"label": "Lung cancer", "survival": None, "screening": None},
