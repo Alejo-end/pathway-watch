@@ -1,4 +1,4 @@
-"""Map a located gap to roadmap measures. Each recommendation names its measure and its evidence.
+"""Map a pathway question to roadmap measures. Each recommendation names its measure and its evidence.
 
 `page` is the page of the measure heading in the roadmap PDF, as printed. `first_step` restates
 the measure's own implementation paragraph ("Toteutus") on that page. `level` says who must act:
@@ -39,7 +39,7 @@ MEASURES: dict[str, dict] = {
     },
     "2.5.1": {
         "action": "Add doctor resources in public primary care, for example by making the personal doctor model national.",
-        "detail": "The roadmap reports that diagnosis took twice as long through public care as through private care in a study of lymphoma patients (page 11).",
+        "detail": "The roadmap reports that diagnosis took twice as long through public care as through private care in one unpublished study of lymphoma patients (page 11).",
         "nordic": None,
         "steps": ["later"],
         "actor": "County",
@@ -50,8 +50,8 @@ MEASURES: dict[str, dict] = {
         "page": 51,
     },
     "1.3.1": {
-        "action": "Raise screening attendance in language groups with targeted, community-based communication.",
-        "detail": "Immigrants take part in screening less (roadmap, page 11).",
+        "action": "If language groups are among the people who do not attend, raise their attendance with targeted, community-based communication.",
+        "detail": "The roadmap reports that immigrants take part in screening less (page 11). The cause of low attendance in this county is not known.",
         "nordic": None,
         "steps": ["detection"],
         "actor": "County, with THL",
@@ -62,7 +62,7 @@ MEASURES: dict[str, dict] = {
         "page": 33,
     },
     "2.4.5": {
-        "action": "Use screening register data together with THL to find the groups that do not attend.",
+        "action": "Use screening register data together with THL to find which groups do not attend.",
         "detail": None,
         "nordic": None,
         "steps": ["detection"],
@@ -140,7 +140,8 @@ def recommend(data: CountyData, pathway: Pathway, county: str) -> list[dict]:
     if pathway.step == "national":
         ids = ["2.3.4", "1.3.2", "2.5.2", "3.2.1"]
     elif pathway.step in ("detection", "watch"):
-        ids = ["1.3.1", "2.4.5", "1.3.2", "3.2.1"]
+        # The cause of low attendance is not known, so the first action finds who does not attend.
+        ids = ["2.4.5", "1.3.1", "1.3.2", "3.2.1"]
     elif pathway.step == "later":
         ids = ["2.5.2", "3.1.2", "2.5.1", "3.2.1"]
     else:
@@ -169,13 +170,13 @@ def recommend(data: CountyData, pathway: Pathway, county: str) -> list[dict]:
 
 def _why(mid: str, surv: str, scr: str, step: str) -> str:
     if mid == "3.2.1":
-        return "The data to locate the gap more exactly does not exist in public form."
+        return "The data that would answer the question does not exist in public form."
     if step == "national":
         return "Finland is far below the Nordic level, and the county's death count shows how many patients the gap concerns."
     if surv == "below" and scr == "below":
         return "Survival and screening attendance are both below the national value."
     if scr == "below":
-        return "Screening attendance is below the national value, although survival is not yet."
+        return "Screening attendance is below the national value. Survival is not."
     if surv == "below":
         return "Survival is below the national value while screening attendance is not."
     return "No survival gap. The measure keeps the pathway visible."

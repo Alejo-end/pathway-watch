@@ -4,7 +4,7 @@ from __future__ import annotations
 
 NATIONAL = "358"  # Sotkanet code for the whole country
 EXCLUDED = {"91"}  # Åland is not a wellbeing services county and has gaps in the data
-WINDOW = 3  # years averaged for a gap, and years pooled for mortality
+WINDOW = 3  # years pooled for mortality, because yearly death counts for one cancer are small
 
 POPULATION = 127  # population on 31 December
 

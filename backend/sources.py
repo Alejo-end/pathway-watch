@@ -10,12 +10,12 @@ SOTKANET_API = "https://sotkanet.fi/rest/1.1"
 STATIC_SOURCES: dict[str, dict] = {
     "strategy": {
         "title": "Kansallinen syöpästrategia 2026–2035, goals page (Goal 3)",
-        "url": None,
+        "url": "https://files.hackjunction.app/resources/Kansallinen_syopastrategia_2026_2035_FINAL.pdf",
         "note": "Strategic goals and indicators on page 5. Goal 3: ensure equal and effective cancer care. Goal 2 includes 80% screening attendance in every county. File Kansallinen_syopastrategia_2026_2035_FINAL.pdf from the AstraZeneca resource pack.",
     },
     "roadmap": {
         "title": "Kansallisen syöpästrategian toimeenpanon tiekartta 2026–2031",
-        "url": None,
+        "url": "https://files.hackjunction.app/resources/Kansallinen_syopastrategia_toimeenpanon_tiekartta_2026_2031.pdf",
         "note": "Implementation roadmap, file Kansallinen_syopastrategia_toimeenpanon_tiekartta_2026_2031.pdf from the AstraZeneca resource pack. In Finnish. Measure numbers and pages are quoted as written.",
     },
     "thl_21_2016": {
@@ -36,7 +36,7 @@ STATIC_SOURCES: dict[str, dict] = {
     "pathway_rule": {
         "title": "Pathway Watch rule, computed by the app",
         "url": None,
-        "note": "Low survival with low screening points to detection. Low survival with normal screening points to referral, diagnosis or treatment. A 'most likely' step, not a cause. Code: backend/analysis.py, locate().",
+        "note": "Low survival with low screening raises a question about detection. Low survival with normal screening raises a question about referral, diagnosis or treatment. The rule compares counties, not patients, so the result is a question to investigate, not a cause. Code: backend/analysis.py, locate().",
     },
     "statfin_mortality": {
         "title": "Statistics Finland, causes of death (tables 13u5 and 11az) and population by age (table 11re)",

@@ -1,9 +1,11 @@
-"""Where to start in Finland: counties ranked by how many independent sources show them behind.
+"""Where to start in Finland: counties ranked by how many registers show them behind.
 
-A signal counts only if it is confident: a Sotkanet gap below Finland with high or medium
-confidence, or more deaths than expected with a 95% interval above 100 (Statistics Finland).
-Survival, screening and deaths come from different registers, so a county that is behind in
-two of them is stronger evidence than one large gap. Deaths from the chosen cancer and from
+A Sotkanet signal counts when the county is below Finland in the latest year and has been
+below in most published years (a persistent gap). Sotkanet publishes no confidence interval,
+so this is a description, not a test. A deaths signal counts when the county has more deaths
+than expected with a 95% interval above 100 (Statistics Finland). Survival, screening and
+deaths come from different registers, but survival and deaths for one cancer are related
+outcomes, so two signals are not two separate proofs. Deaths from the chosen cancer and from
 all cancers come from the same register, so together they count as one.
 """
 
@@ -17,13 +19,13 @@ from .sotkanet import CountyData
 
 
 def signals(data: CountyData, mort: Mortality, cancer: str, county: str) -> list[dict]:
-    """The confident signals for one county. Each has a kind, a short text and the ID of its source."""
+    """The signals for one county. Each has a kind, a short text and the ID of its source."""
     out = []
     if has_county_survival(cancer):
         for kind in ("survival", "screening"):
             g = gap(data, CANCERS[cancer][kind], county)
-            if g.direction == "below" and g.confidence in ("high", "medium"):
-                out.append({"kind": kind, "text": f"{kind.capitalize()} {g.avg_gap:+g} points", "size": abs(g.avg_gap),
+            if g.direction == "below" and g.persistence == "persistent":
+                out.append({"kind": kind, "text": f"{kind.capitalize()} {g.gap:+g} points in {g.year}", "size": abs(g.gap),
                             "source": f"sotkanet:{g.indicator}"})
     if mort.ok:
         for cause in dict.fromkeys([cancer, "all"]):

@@ -56,8 +56,8 @@ def meta():
 
 
 # The three map layers share one shape per county: name, latest, year, gap, direction.
-# `direction` is below (worse than Finland), above or near. `confidence` is present only
-# where the layer computes one.
+# `direction` is below (worse than Finland), above or near. The Sotkanet layer adds
+# `persistence`, and the mortality layer adds `confidence` from its 95% interval.
 
 @app.get("/api/map/{indicator}")
 def map_layer(indicator: int):
@@ -66,14 +66,15 @@ def map_layer(indicator: int):
     out = {}
     for c in data.counties:
         g = A.gap(data, indicator, c)
-        s = data.series(indicator, c)
         out[c] = {
             "name": data.names[c],
-            "latest": s[max(s)] if s else None,
-            "year": max(s) if s else None,
-            "gap": g.avg_gap,
+            "latest": g.county_value,
+            "year": g.year,
+            "gap": g.gap,
             "direction": g.direction,
-            "confidence": g.confidence,
+            "persistence": g.persistence,
+            "years_same_side": g.years_same_side,
+            "n_years": len(g.years),
         }
     return {"indicator": indicator, "source": f"sotkanet:{indicator}", "counties": out}
 
@@ -87,7 +88,7 @@ def mortality_layer(cause: str):
     for c in data.counties:
         m = mort.smr(cause, c)
         out[c] = {
-            "name": data.names[c], "latest": m.smr, "year": f"{m.years[0]}–{m.years[-1]}",
+            "name": data.names[c], "latest": m.smr, "year": f"{m.years[0]} to {m.years[-1]}",
             "gap": round(100 - m.smr, 1),
             "direction": {"worse": "below", "better": "above", "near": "near"}[m.direction],
             "confidence": m.confidence, "low": m.low, "high": m.high,
@@ -118,13 +119,18 @@ def headlines():
     for cancer in ("bowel", "breast"):
         ind = CANCERS[cancer]["screening"]
         by_county = {c: data.series(ind, c) for c in data.counties}
-        year = max(max(v) for v in by_county.values() if v)
+        years = sorted({y for v in by_county.values() for y in v})
+        year = years[-1]
         vals = {c: v[year] for c, v in by_county.items() if year in v}
         low = min(vals, key=vals.get)
+        # In how many of the published years the same county had the lowest value, ties included.
+        lowest_years = sum(1 for y in years if by_county[low].get(y) is not None
+                           and by_county[low][y] == min(v[y] for v in by_county.values() if y in v))
         screening.append({"cancer": CANCERS[cancer]["label"], "year": year, "lowest": data.names[low],
                           "value": vals[low], "target": SCREENING_TARGET,
                           "below_target": sum(1 for v in vals.values() if v < SCREENING_TARGET),
-                          "n": len(vals), "source": f"sotkanet:{ind}"})
+                          "n": len(vals), "lowest_years": lowest_years, "n_years": len(years),
+                          "first_year": years[0], "source": f"sotkanet:{ind}"})
     gaps = [nordcan.benchmark(nc, s) | {"label": LABELS[s]} for s in nc["sites"]]
     return {
         "channel": {"national": t["national"]["public_share"], "year": t["national"]["year"],
@@ -138,7 +144,7 @@ def headlines():
 
 @app.get("/api/national/{cancer}")
 def national(cancer: str):
-    """Where to start in Finland for this cancer: counties ranked by the number of confident signals."""
+    """Where to start in Finland for this cancer: counties ranked by the number of registers that show them behind."""
     if cancer not in CANCERS:
         raise HTTPException(404, "unknown cancer")
     return ranking(data, mort, cancer)
@@ -186,12 +192,12 @@ def _county_survival_view(cancer: str, county: str, cases: dict) -> dict:
     """Chart and simulation for a cancer with county survival: the county against Finland."""
     ind = CANCERS[cancer]["survival"]
     g = A.gap(data, ind, county)
-    own, nat = (g.county_values[-1], g.national_values[-1]) if g.years else (None, None)
+    own, nat = g.county_value, g.national_value
     return {
         "chart": {"kind": "survival", "source": f"sotkanet:{ind}",
                   "county": data.series(ind, county), "national": data.series(ind, NATIONAL)},
         "simulation": {"mode": "county", "cases": cases, "start": own, "goal": nat,
-                       "period": g.years[-1] if g.years else None, "source": f"sotkanet:{ind}", "target": None,
+                       "period": g.year, "source": f"sotkanet:{ind}", "target": None,
                        "steps": A.simulation_steps(cases["value"], own, nat)},
     }
 

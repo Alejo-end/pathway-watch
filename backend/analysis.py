@@ -1,4 +1,4 @@
-"""Compares a county with the country: the gap, how sure it is, the likely pathway step and the simulation.
+"""Compares a county with the country: the gap, how persistent it is, the pathway question and the simulation.
 
 Plain code, no language model.
 """
@@ -7,56 +7,64 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .indicators import CANCERS, NATIONAL, STEPS, WINDOW, has_county_survival
+from .indicators import CANCERS, NATIONAL, STEPS, has_county_survival
 from .sotkanet import CountyData
 
-NEAR = 1.0  # a difference smaller than this many points counts as "near the national value"
+# A difference of up to this many points counts as "near the national value". Sotkanet rounds survival
+# to whole percent, so a gap of exactly one point can be rounding alone and must not count as a gap.
+NEAR = 1.0
+MIN_YEARS = 3  # fewer shared years than this say nothing about persistence
 
 
 @dataclass
 class Gap:
     indicator: int
     county: str
-    years: list[int]
+    year: int | None  # the latest year with a value for both the county and Finland
+    county_value: float | None
+    national_value: float | None
+    gap: float | None  # county minus national in that year
+    direction: str  # below, above, near, unknown
+    years: list[int]  # every year with a value for both, oldest first
     county_values: list[float]
     national_values: list[float]
-    avg_gap: float | None  # county minus national, average over the window
-    direction: str  # below, above, near, unknown
-    confidence: str  # high, medium, low
-    years_agreeing: int  # years that, taken alone, give the same direction
+    years_same_side: int  # years in which the county is on the same side as in the latest year
+    persistence: str  # persistent, mixed, short
 
 
-def gap(data: CountyData, indicator: int, county: str, window: int = WINDOW) -> Gap:
-    """County against the national value over the last `window` years with data for both.
+def _side(diff: float) -> str:
+    if abs(diff) <= NEAR:
+        return "near"
+    return "below" if diff < 0 else "above"
 
-    Confidence says how many single years agree with the direction of the average: all of
-    them is high, all but one is medium, fewer is low. For "near", a year agrees if it is
-    itself within NEAR points of the national value. Fewer than `window` years is always low.
+
+def gap(data: CountyData, indicator: int, county: str) -> Gap:
+    """County against the national value in the latest year that has both. No averaging.
+
+    Each Sotkanet survival value covers ten years of diagnoses, so neighbouring years share
+    most of their patients. An average of such years removes no noise, and agreement between
+    them is not a test. Sotkanet publishes no confidence interval.
+
+    `persistence` describes, it does not test. "persistent": at least three shared years, and
+    the county is on the same side as in the latest year in more than half of them. "mixed":
+    at least three shared years, but not most. "short": fewer than three shared years.
     """
     own = data.series(indicator, county)
     nat = data.series(indicator, NATIONAL)
-    years = sorted(set(own) & set(nat))[-window:]
+    years = sorted(set(own) & set(nat))
+    if not years:
+        return Gap(indicator, county, None, None, None, None, "unknown", [], [], [], 0, "short")
     cv = [own[y] for y in years]
     nv = [nat[y] for y in years]
     diffs = [c - n for c, n in zip(cv, nv)]
-    if not diffs:
-        return Gap(indicator, county, [], [], [], None, "unknown", "low", 0)
-    avg = round(sum(diffs) / len(diffs), 1)
-    direction = "near" if abs(avg) < NEAR else ("below" if avg < 0 else "above")
-    if direction == "near":
-        agreeing = sum(1 for d in diffs if abs(d) < NEAR)
+    latest = round(diffs[-1], 1)
+    direction = _side(latest)
+    same = sum(1 for d in diffs if _side(round(d, 1)) == direction)
+    if len(years) < MIN_YEARS:
+        persistence = "short"
     else:
-        sign = -1 if direction == "below" else 1
-        agreeing = sum(1 for d in diffs if d * sign >= NEAR)
-    if len(years) < window:
-        confidence = "low"
-    elif agreeing == window:
-        confidence = "high"
-    elif agreeing == window - 1:
-        confidence = "medium"
-    else:
-        confidence = "low"
-    return Gap(indicator, county, years, cv, nv, avg, direction, confidence, agreeing)
+        persistence = "persistent" if same * 2 > len(years) else "mixed"
+    return Gap(indicator, county, years[-1], cv[-1], nv[-1], latest, direction, years, cv, nv, same, persistence)
 
 
 def rank(data: CountyData, indicator: int, county: str) -> tuple[int, int]:
@@ -75,54 +83,55 @@ class Pathway:
     cancer: str
     step: str  # detection, later, watch, none, unknown, national
     label: str
-    confidence: str
+    evidence: str  # persistent, mixed, short, or national
     reason: str
     caveats: list[str]
 
 
 def locate(data: CountyData, cancer: str, county: str) -> Pathway:
-    """The most likely pathway step. It is an inference from public data, never a proven cause.
+    """The pathway step to ask about first. A question to investigate, never a located cause.
 
-    With county data: low survival with low screening points to detection. Low survival with
-    normal screening points to referral, diagnosis or treatment. Normal survival with low
-    screening is an early warning ("watch"). Without county survival data, the step comes
-    from national evidence.
+    The rule compares whole counties, not patients. Low survival with low screening raises a
+    question about detection. Low survival with normal screening raises a question about
+    referral, diagnosis or treatment. Normal survival with low screening is an early warning
+    ("watch"). Without county survival data, the question comes from national evidence.
     """
     if not has_county_survival(cancer):
         return _locate_from_national_evidence(cancer)
     spec = CANCERS[cancer]
     surv = gap(data, spec["survival"], county)
     scr = gap(data, spec["screening"], county)
-    caveats = []
+    caveats = ["The rule compares counties, not patients. Survival describes patients diagnosed up to ten years ago."]
     if cancer == "bowel":
         caveats.append(
             "Bowel screening started nationally in 2022. Five-year survival describes patients "
             "diagnosed years earlier, so screening in the same year cannot explain it."
         )
     if surv.direction == "unknown":
-        return Pathway(cancer, "unknown", "Not enough data", "low", "No survival data for this county.", caveats)
+        return Pathway(cancer, "unknown", "Not enough data", "short", "No survival data for this county.", caveats)
     if surv.direction != "below" and scr.direction == "below":
         return Pathway(
-            cancer, "watch", STEPS["detection"], scr.confidence,
+            cancer, "watch", STEPS["detection"], scr.persistence,
             "Survival is not below the national value, but screening attendance is. "
-            "Late detection can show in survival only years later.", caveats,
+            "Late detection can show in survival only years later. This raises a question about detection.", caveats,
         )
     if surv.direction != "below":
         return Pathway(
-            cancer, "none", "No survival gap found", surv.confidence,
+            cancer, "none", "No survival gap found", surv.persistence,
             "Five-year survival is at or above the national value.", caveats,
         )
     if scr.direction == "below":
         return Pathway(
-            cancer, "detection", STEPS["detection"], _weaker(surv.confidence, scr.confidence),
-            "Survival and screening attendance are both below the national value.", caveats,
+            cancer, "detection", STEPS["detection"], _weaker(surv.persistence, scr.persistence),
+            "Survival and screening attendance are both below the national value. "
+            "This raises a question about detection.", caveats,
         )
     return Pathway(
         cancer, "later",
         f"{STEPS['referral']}, {STEPS['diagnosis'].lower()} or {STEPS['treatment'].lower()}",
-        surv.confidence if scr.direction != "unknown" else "low",
+        surv.persistence if scr.direction != "unknown" else "short",
         "Survival is below the national value, but screening attendance is not. "
-        "The difference most likely starts after detection.",
+        "This raises a question about the steps after detection.",
         caveats + ["No public source gives referral or waiting times per county, so the app cannot tell these three steps apart."],
     )
 
@@ -131,16 +140,17 @@ def _locate_from_national_evidence(cancer: str) -> Pathway:
     """Lung cancer: survival far below the Nordic level (NORDCAN), and the roadmap's statement
     that poor-prognosis cancers are often diagnosed at an advanced stage (page 22)."""
     return Pathway(
-        cancer, "national", "Detection and diagnosis", "medium",
+        cancer, "national", "Detection and diagnosis", "national",
         "Five-year survival in Finland is far below the Nordic level, and the roadmap reports that poor-prognosis "
-        "cancers are often diagnosed at an advanced stage, with vague symptoms and smoking stigma delaying care (roadmap, page 22).",
+        "cancers are often diagnosed at an advanced stage, with vague symptoms and smoking stigma delaying care "
+        "(roadmap, page 22). This raises a question about detection and diagnosis in every county.",
         ["No public source gives lung cancer survival, stage or screening per county. The county view uses age-adjusted mortality.",
          "A lung cancer screening pilot started in 2026 in Helsinki and eight counties (roadmap, page 46)."],
     )
 
 
 def _weaker(a: str, b: str) -> str:
-    order = ["low", "medium", "high"]
+    order = ["short", "mixed", "persistent"]
     return order[min(order.index(a), order.index(b))]
 
 

@@ -1,6 +1,6 @@
 # Pathway Watch: demo plan
 
-This file is the build brief for Pathway Watch. Team Kindergarten Engineering builds it at Junction 2026 for the AstraZeneca challenge "Equal Care Across Finland". Any person or coding agent who joins the work starts here.
+This file is the build brief for Pathway Watch. Team Kindergarten Engineering builds it at Junction 2026 for the AstraZeneca challenge "Equal Care Across Finland". Any person or coding agent who joins the work starts here. For a short explanation with maps, read `pathway-watch/HANDBOOK.md` first.
 
 ## Goal
 
@@ -13,7 +13,7 @@ The design rule: the language model explains and drafts. Code computes every num
 Pathway Watch is our second entry, after the Safe Kitchen Agent. An originality test showed that a dashboard with an AI analyst is the obvious idea for this brief. So the pitch leads with two findings that a model cannot give other teams, because they come from Finnish sources and live data:
 
 1. Diagnosis takes twice as long through public care. The roadmap cites an unpublished lymphoma study on page 11.
-2. Helsinki has the lowest breast screening attendance of all counties in every year from 2019 to 2024 (Sotkanet). The three lowest areas are all in Uusimaa.
+2. Helsinki has the lowest breast screening attendance of all counties in every published year, 2015 to 2024 (Sotkanet). The three lowest areas are all in Uusimaa in each of those years.
 3. Satakunta has the lowest bowel cancer survival in every year from 2019 to 2023 (Sotkanet).
 
 The first finding is one unpublished study of lymphoma patients, and the pitch says so.
@@ -32,12 +32,14 @@ Do not build an early warning replay. It needs a history of waiting times by cou
 We read the Sotkanet indicator definitions and six years of data. Four earlier statements were wrong or too strong.
 
 1. The survival figure is not a one-year value. Each year covers patients diagnosed in that year and the nine years before, followed for five years. The figure is age-standardized. So two neighboring years share most of their patients. A three-year average does not reduce noise, and the plan no longer asks for one.
-2. The headline county was wrong. Päijät-Häme is lowest only in 2024. Satakunta has the lowest bowel cancer survival in every year from 2019 to 2023, and the lowest three-year value (about 61% against 68% nationally). Kainuu is second. Use Satakunta in the demo.
+2. The headline county was wrong. Päijät-Häme is lowest only in 2024. Satakunta has the lowest bowel cancer survival in every year from 2019 to 2023. It is 5 to 9 points below Finland in those years, and 4 points below in 2024. Use Satakunta in the demo.
 3. Survival describes care given up to ten years ago. It does not show how the pathway works today. Do not present "extra survivors" as the effect of an action now. Label the slider as an illustration of the size of the gap.
 4. The "how sure are we" marker cannot come from year-to-year agreement, because the years overlap. Take confidence intervals from the Cancer Registry statistics app. If they are not available, say "uncertainty not published".
-5. The Helsinki screening finding is stronger than we said. Helsinki has the lowest breast screening attendance in all six years from 2019 to 2024. The three lowest areas are all in Uusimaa. The cause is not known. Possible explanations are tests in private care that the program does not count, people who move often, and language barriers. Present these as questions, and ask the mentors.
+5. The Helsinki screening finding is stronger than we said. Helsinki has the lowest breast screening attendance in all ten published years, 2015 to 2024. The three lowest areas are all in Uusimaa. The cause is not known. Possible explanations are tests in private care that the program does not count, people who move often, and language barriers. Present these as questions, and ask the mentors.
 6. The "twice as long through public care" finding is one unpublished study of lymphoma patients. Quote it as that. Do not apply it to all cancers.
 7. The rule "low survival with normal screening points to referral or treatment" compares whole counties, not patients. Call the result "a question to investigate", never a located cause.
+8. Update of 14 November, 02:30: the code now follows items 1, 3, 4, 6 and 7. It shows the gap of the latest year and the number of years on the same side. It no longer averages years, and it no longer says "confidence" for Sotkanet values. A gap of one point counts as "near", because Sotkanet rounds survival to whole percent.
+9. The first action for low screening was outreach to language groups. That assumed the cause. The first action is now to find who does not attend (measure 2.4.5).
 
 ## What AstraZeneca asks
 
@@ -120,12 +122,13 @@ Sotkanet, the THL indicator bank, has an open REST API with no key. It returns v
 |---|---|---|
 | 3627 | Five-year relative survival, bowel cancer, % | 2019–2024 |
 | 3625 | Five-year relative survival, breast cancer, % | 2019–2024 |
-| 3626 | Five-year relative survival, cervical cancer, % | not yet known |
+| 3626 | Five-year relative survival, cervical cancer, % | 2019–2024 |
 | 6103 | Colorectal cancer screening, share of invited who attended, % | 2022–2024 |
-| 3621 | Breast cancer screening, share of invited who attended, % | 2019–2024 |
-| 3620 | Cervical cancer screening, share of invited who attended, % | not yet known |
-| 5643 | Cancer index, age-standardized | 2019–2024 |
-| 5093 | Entitled to special refunds on cancer medicines, age-standardized % | not yet known |
+| 3621 | Breast cancer screening, share of invited who attended, % | 2015–2024 |
+| 3620 | Cervical cancer screening, share of invited who attended, % | 2015–2024 |
+| 5643 | Cancer index, age-standardized | 2019–2024, not used by the app |
+| 5093 | Entitled to special refunds on cancer medicines, age-standardized % | not fetched |
+| 293, 2371, 692 | Doctor visits in public, occupational and private care | 2020–2024 |
 
 Example calls:
 
@@ -134,7 +137,7 @@ https://sotkanet.fi/rest/1.1/regions
 https://sotkanet.fi/rest/1.1/json?indicator=3627&years=2024&genders=total
 ```
 
-First result (fetched on 13 November 2026, Åland excluded): five-year bowel cancer survival in 2024 ranges from 63% in Päijät-Häme to 74% in Keski-Uusimaa. Each value covers ten years of diagnoses. Satakunta is lowest in every year from 2019 to 2023. The national value is 68%. The lowest and highest counties change from year to year. For example, Satakunta was lowest in 2022 and 2023. So small county numbers make single years noisy, and the app needs to show that.
+First result (fetched on 13 November 2026, Åland excluded): five-year bowel cancer survival in 2024 ranges from 63% in Päijät-Häme to 74% in Keski-Uusimaa. Each value covers ten years of diagnoses. Satakunta is lowest in every year from 2019 to 2023. The national value is 68%. The highest county changes from year to year.
 
 Other sources:
 
@@ -188,8 +191,9 @@ A slider illustrates the size of the gap: the county at the national survival le
 
 ```
 data/fetch_sotkanet.py  -> data/raw/*.json      (open API, no key)
-data/fetch_nordcan.py   -> data/raw/nordcan.csv (manual download if no API)
-docs/sources/           -> strategy and roadmap PDFs, text extracts
+data/fetch_statfin.py   -> data/raw/statfin_mortality.json (open API, no key)
+data/nordcan.json       -> NORDCAN values, copied by hand from the fact sheets
+data/svf_sweden.json    -> Sweden's waiting times, copied by hand from the RCC report
 backend/analysis.py     -> gaps, confidence, pathway step (plain code)
 backend/recommend.py    -> gap type to roadmap measure, with citations
 backend/analyst.py      -> language model writes 3 sentences from computed facts only
@@ -253,5 +257,5 @@ Questions for the mentors:
 ## Still unknown
 
 1. Whether the Cancer Registry statistics app gives stage at diagnosis and case counts by county.
-2. Whether a NORDCAN API exists, or the data needs a manual download.
+2. What the mentors answered on Friday. No interview notes are in the repository.
 3. What the AstraZeneca background pack adds. It is in Finnish, on the Junction platform.

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .analysis import Pathway, gap, rank
+from .analysis import Gap, Pathway, gap, rank
 from .channel import channel_table
 from .indicators import CANCERS, SOTKANET, has_county_survival
 from .mortality import GOAL3, LABELS, Mortality
@@ -29,23 +29,36 @@ def survival_and_screening_facts(data: CountyData, cancer: str, county: str) -> 
     for key in ("survival", "screening"):
         ind = CANCERS[cancer][key]
         g = gap(data, ind, county)
-        if not g.years:
+        if g.year is None:
             continue
         label = SOTKANET[ind][0].lower()
         src = f"sotkanet:{ind}"
-        y = g.years[-1]
-        out.append(Fact(f"{ind}.county.{y}", f"{name}, {label}, {y}: {g.county_values[-1]:g}%", g.county_values[-1], "%", src))
-        out.append(Fact(f"{ind}.national.{y}", f"Finland, {label}, {y}: {g.national_values[-1]:g}%", g.national_values[-1], "%", src))
+        y = g.year
+        out.append(Fact(f"{ind}.county.{y}", f"{name}, {label}, {y}: {g.county_value:g}%", g.county_value, "%", src))
+        out.append(Fact(f"{ind}.national.{y}", f"Finland, {label}, {y}: {g.national_value:g}%", g.national_value, "%", src))
         out.append(Fact(
             f"{ind}.gap",
-            f"{name}, {label}: {g.avg_gap:+g} points against the national value, average {g.years[0]}–{g.years[-1]} "
-            f"({g.direction}, {g.years_agreeing} of {len(g.years)} single years agree, {g.confidence} confidence)",
-            g.avg_gap, "points", src,
+            f"{name}, {label}, {y}: {gap_phrase(g)}. {name} was {side_phrase(g)} in {g.years_same_side} of "
+            f"{len(g.years)} published years ({g.years[0]} to {g.years[-1]}). No confidence interval is published",
+            g.gap, "points", src,
         ))
         r, n = rank(data, ind, county)
         if r:
             out.append(Fact(f"{ind}.rank", f"{name} ranks {r} of {n} counties on {label} in {y} (1 = lowest)", r, "rank", src))
     return out
+
+
+def gap_phrase(g: Gap) -> str:
+    """The latest-year gap in words: '4 points below the national value' or 'near the national value (+0.5 points)'."""
+    if g.direction == "near":
+        return f"near the national value ({g.gap:+g} points)"
+    unit = "point" if abs(g.gap) == 1 else "points"
+    return f"{abs(g.gap):g} {unit} {g.direction} the national value"
+
+
+def side_phrase(g: Gap) -> str:
+    """The side of the national value the county is on: 'below the national value'."""
+    return f"{g.direction} the national value"
 
 
 def mortality_facts(data: CountyData, mort: Mortality, cancer: str, county: str) -> list[Fact]:
@@ -58,25 +71,32 @@ def mortality_facts(data: CountyData, mort: Mortality, cancer: str, county: str)
         m = mort.smr(cause, county)
         out.append(Fact(
             f"mort.{cause}",
-            f"{name}, {LABELS[cause].lower()} deaths {m.years[0]}–{m.years[-1]}: {m.observed} against {m.expected:g} expected "
-            f"from the age structure, SMR {m.smr} (95% interval {m.low}–{m.high}, {m.confidence} confidence)",
+            f"{name}, {LABELS[cause].lower()} deaths {m.years[0]} to {m.years[-1]}: {m.observed} against {m.expected:g} expected "
+            f"from the age structure, SMR {m.smr} (95% interval {m.low} to {m.high}, {interval_phrase(m)})",
             m.smr, "SMR", "statfin_mortality",
         ))
     m = mort.smr(cancer, county)
     out.append(Fact(
         f"mort.{cancer}.yearly",
-        f"{name} has {round(m.deaths_per_year)} {LABELS[cancer].lower()} deaths per year on average in {m.years[0]}–{m.years[-1]}, "
-        f"SMR {m.smr} (95% interval {m.low}–{m.high}, {m.confidence} confidence)",
+        f"{name} has {round(m.deaths_per_year)} {LABELS[cancer].lower()} deaths per year on average in {m.years[0]} to {m.years[-1]}, "
+        f"SMR {m.smr} (95% interval {m.low} to {m.high}, {interval_phrase(m)})",
         m.deaths_per_year, "deaths", "statfin_mortality",
     ))
     m = mort.smr("all", county)
     out.append(Fact(
         "mort.target",
-        f"{name} has {round(m.deaths_per_year)} cancer deaths per year on average in {m.years[0]}–{m.years[-1]}. "
+        f"{name} has {round(m.deaths_per_year)} cancer deaths per year on average in {m.years[0]} to {m.years[-1]}. "
         f"The Goal 3 target of 10% fewer deaths means {round(m.deaths_per_year * 0.1)} fewer per year",
         round(m.deaths_per_year * 0.1), "deaths", "statfin_mortality",
     ))
     return out
+
+
+def interval_phrase(m) -> str:
+    """What the 95% interval of an SMR supports. Only an interval that leaves out 100 supports "more" or "fewer"."""
+    if m.confidence != "high":
+        return "the interval includes the expected number"
+    return "more deaths than expected" if m.direction == "worse" else "fewer deaths than expected"
 
 
 def nordic_facts(cancer: str, benchmark: dict) -> list[Fact]:
@@ -113,15 +133,15 @@ def channel_facts(data: CountyData, county: str) -> list[Fact]:
              f"{name} ranks {c['rank']} of {t['n']} counties on reliance on the public channel in {y} (1 = most reliant)",
              c["rank"], "rank", "sotkanet:293"),
         Fact("channel.roadmap",
-             "In an unpublished study of lymphoma patients, diagnosis took twice as long through public health care "
+             "In one unpublished study of lymphoma patients, diagnosis took twice as long through public health care "
              "as through private providers (roadmap, page 11)",
              None, "", "roadmap"),
     ]
 
 
 def pathway_and_action_facts(pathway: Pathway, recs: list[dict]) -> list[Fact]:
-    """The located pathway step and the first recommended roadmap measure."""
-    out = [Fact("pathway", f"Most likely pathway step: {pathway.label} ({pathway.confidence} confidence). {pathway.reason}",
+    """The pathway step to ask about and the first recommended roadmap measure."""
+    out = [Fact("pathway", f"Question to investigate: {pathway.label} (evidence: {pathway.evidence}). {pathway.reason}",
                 None, "", "pathway_rule")]
     if recs:
         r = recs[0]

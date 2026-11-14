@@ -1,6 +1,6 @@
 # Pathway Watch
 
-Pathway Watch shows a decision-maker in a wellbeing services county where cancer patients do worse than elsewhere in Finland, at which step of the care pathway the difference most likely starts, and which roadmap measure to act on first. The build brief is `../PATHWAY_PLAN.md`.
+Pathway Watch shows a decision-maker in a wellbeing services county where cancer patients do worse than elsewhere in Finland, at which step of the care pathway the difference most likely starts, and which roadmap measure to act on first. Read `HANDBOOK.md` for an explanation with maps. The build brief is `../PATHWAY_PLAN.md`.
 
 ## Run
 
@@ -25,7 +25,7 @@ A fixed template writes the three summary sentences from the computed facts. If 
 | `data/svf_sweden.json` | Sweden's share of patients treated within the SVF lead time, per region (RCC report 2025) |
 | `backend/indicators.py` | The Sotkanet indicators, the cancers and the pathway steps |
 | `backend/sotkanet.py` | Loads the cached Sotkanet files |
-| `backend/analysis.py` | Gap, confidence, pathway rule, case estimate, simulation |
+| `backend/analysis.py` | Gap in the latest year, persistence over the years, pathway rule, case estimate, simulation |
 | `backend/mortality.py` | Age-adjusted cancer mortality per county (SMR) for Goal 3 |
 | `backend/nordcan.py` | Finland against the Nordic level (the average of Sweden and Norway) |
 | `backend/channel.py` | Channel Gap: share of working-age physician visits that go through public health centres |
@@ -39,7 +39,7 @@ A fixed template writes the three summary sentences from the computed facts. If 
 
 ## Open work
 
-1. Add public links for the strategy, the roadmap and THL guidance 21/2016 in `backend/sources.py`. The page numbers are filled in from the PDFs.
+1. Add a public link for THL guidance 21/2016 in `backend/sources.py`. The strategy and the roadmap have their links.
 2. Find occupational health coverage per county (Kela). The Channel Gap uses visits as a proxy.
 3. Test the language model path with `ANTHROPIC_API_KEY` set.
 

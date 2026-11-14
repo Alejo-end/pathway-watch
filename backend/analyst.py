@@ -1,4 +1,4 @@
-"""Three plain sentences for the decision-maker: the gap, the likely step, the first action.
+"""Three plain sentences for the decision-maker: the gap, the pathway question, the first action.
 
 A fixed template writes them from the computed facts. If Anthropic credentials are present
 and PATHWAY_LLM is not 0, the language model rewords the facts instead. Either way, `check`
@@ -18,7 +18,7 @@ import re
 
 from . import nordcan
 from .analysis import Pathway, gap
-from .facts import Fact
+from .facts import Fact, gap_phrase, side_phrase
 from .indicators import CANCERS, has_county_survival
 from .mortality import shared as shared_mortality
 from .sotkanet import CountyData
@@ -32,12 +32,12 @@ QUANTITY_WORDS = re.compile(
 
 SYSTEM = """You write for a non-technical decision-maker in a Finnish wellbeing services county.
 You get a list of facts, each with an ID. Write at most three short sentences in plain English:
-1. the gap, 2. the step of the care pathway where it most likely starts, 3. the first action.
+1. the gap, 2. the step of the care pathway it raises a question about, 3. the first action.
 Rules:
 - Use only the facts given. Do not add numbers, causes, names or claims that are not in the facts.
 - Copy every number exactly as it appears in a fact.
 - Keep each number with the place and year it belongs to in the fact. Write quantities as digits, not words.
-- Say "most likely" for the pathway step. Never claim a cause.
+- Present the pathway step as a question to investigate. Never claim a cause, and never say where a gap starts.
 - For each sentence, list the IDs of the facts it uses in fact_ids."""
 
 SCHEMA = {
@@ -118,26 +118,23 @@ def _county_sentences(data: CountyData, cancer: str, county: str, pathway: Pathw
     s_ind, c_ind = spec["survival"], spec["screening"]
     sg, cg = gap(data, s_ind, county), gap(data, c_ind, county)
     out = []
-    if sg.years:
-        y = sg.years[-1]
-        trend = {
-            "below": f"on average {abs(sg.avg_gap):g} points below the national value",
-            "above": f"on average {sg.avg_gap:g} points above the national value",
-            "near": "close to the national value",
-        }[sg.direction]
+    if sg.year is not None:
+        y = sg.year
         out.append({
-            "text": f"In {name}, five-year survival for {label} was {sg.county_values[-1]:g}% in {y}, against "
-                    f"{sg.national_values[-1]:g}% for Finland, and {trend} over {sg.years[0]}–{y}.",
+            "text": f"In {name}, five-year survival for {label} was {sg.county_value:g}% in {y}, against "
+                    f"{sg.national_value:g}% for Finland: {gap_phrase(sg)}. It was {side_phrase(sg)} in "
+                    f"{sg.years_same_side} of {len(sg.years)} published years ({sg.years[0]} to {sg.years[-1]}).",
             "fact_ids": [f"{s_ind}.county.{y}", f"{s_ind}.national.{y}", f"{s_ind}.gap"],
         })
-    if pathway.step in ("detection", "later", "watch") and cg.years:
-        y = cg.years[-1]
-        att = f"{cg.county_values[-1]:g}% against {cg.national_values[-1]:g}% nationally in {y}"
+    if pathway.step in ("detection", "later", "watch") and cg.year is not None:
+        y = cg.year
+        att = f"{cg.county_value:g}% against {cg.national_value:g}% for Finland in {y}"
         text = {
-            "detection": f"Screening attendance is also low ({att}), so the difference most likely starts at detection.",
-            "later": f"Screening attendance is not behind ({att}), so the difference most likely starts later: "
-                     f"{pathway.label[0].lower() + pathway.label[1:]}.",
-            "watch": f"Screening attendance is low ({att}), which is an early warning at the detection step.",
+            "detection": f"Screening attendance is also {side_phrase(cg)} ({att}), which raises a question about detection.",
+            "later": f"Screening attendance is {side_phrase(cg)} ({att}), which raises a question about the steps "
+                     f"after detection: {pathway.label[0].lower() + pathway.label[1:]}.",
+            "watch": f"Screening attendance is {side_phrase(cg)} ({att}), which is an early warning and raises "
+                     "a question about detection.",
         }[pathway.step]
         out.append({"text": text, "fact_ids": [f"{c_ind}.county.{y}", f"{c_ind}.national.{y}", "pathway"]})
     return out
@@ -150,17 +147,18 @@ def _national_sentences(data: CountyData, cancer: str, county: str, pathway: Pat
     mort = shared_mortality()
     if mort.ok:
         m = mort.smr(cancer, county)
-        word = {"worse": "more than", "better": "fewer than", "near": "about as many as"}[m.direction]
+        # Only a 95% interval that leaves out 100 supports "more" or "fewer".
+        word = {"worse": "more than", "better": "fewer than"}[m.direction] if m.confidence == "high" else "within the range"
         out.append({
-            "text": f"In {name}, {round(m.deaths_per_year)} people died of {label} each year in {m.years[0]}–{m.years[-1]}, "
-                    f"{word} the county's age structure predicts (SMR {m.smr}, {m.confidence} confidence).",
+            "text": f"In {name}, {round(m.deaths_per_year)} people died of {label} each year in {m.years[0]} to {m.years[-1]}, "
+                    f"{word} the county's age structure predicts (SMR {m.smr}, 95% interval {m.low} to {m.high}).",
             "fact_ids": [f"mort.{cancer}.yearly"],
         })
     b = nordcan.benchmark(nordcan.load(), cancer)
     if b["gap"] is not None:
         out.append({
             "text": f"Nationally, five-year survival is {b['finland']}% against a Nordic level of {b['nordic']}%, "
-                    f"so the gap most likely starts at {pathway.label.lower()}.",
+                    f"which raises a question about {pathway.label.lower()} in every county.",
             "fact_ids": [f"nordcan.{cancer}", "pathway"],
         })
     return out
@@ -179,7 +177,7 @@ def llm_sentences(facts: list[Fact]) -> list[dict] | None:
         client = anthropic.Anthropic()
         resp = client.beta.messages.create(
             model=MODEL,
-            max_tokens=2000,
+            max_tokens=4096,
             system=SYSTEM,
             betas=["server-side-fallback-2026-07-01"],
             fallbacks="default",
@@ -194,12 +192,15 @@ def llm_sentences(facts: list[Fact]) -> list[dict] | None:
         return None
     except TypeError:  # the SDK found no credentials
         return None
-    if resp.stop_reason == "refusal":
+    if resp.stop_reason != "end_turn":  # a refusal, or an answer cut off at max_tokens
         return None
     text = next((b.text for b in resp.content if b.type == "text"), None)
     if not text:
         return None
-    return json.loads(text).get("sentences", [])
+    try:
+        return json.loads(text).get("sentences", [])
+    except (json.JSONDecodeError, AttributeError):  # not the JSON object the schema asks for
+        return None
 
 
 def summarize(data: CountyData, cancer: str, county: str, pathway: Pathway, recs: list[dict], facts: list[Fact]) -> dict:

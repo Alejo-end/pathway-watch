@@ -2,6 +2,7 @@
 
 import json
 import re
+import types
 
 import pytest
 
@@ -51,6 +52,46 @@ def test_template_sentences_all_survive_the_check():
         assert len(b["summary"]["sentences"]) >= 2, (cancer, county)
 
 
+def test_no_sentence_or_fact_averages_years_or_claims_where_a_gap_starts():
+    for cancer, county, b in all_briefings():
+        texts = [s["text"] for s in b["summary"]["sentences"]] + [f["text"] for f in b["facts"].values()]
+        texts.append(b["pathway"]["reason"])
+        for t in texts:
+            assert "most likely" not in t.lower() and "confidence)" not in t, (cancer, county, t)
+        # "average" stays only in the mortality facts, where deaths per year are a real average of pooled years.
+        assert all("average" not in s["text"] for s in b["summary"]["sentences"]), (cancer, county)
+        assert all("average" not in f["text"] for i, f in b["facts"].items() if not i.startswith("mort.")), (cancer, county)
+
+
+def _fake_anthropic(stop_reason: str, text: str):
+    """A stand-in for anthropic.Anthropic whose one call returns a fixed answer."""
+    resp = types.SimpleNamespace(stop_reason=stop_reason, content=[types.SimpleNamespace(type="text", text=text)])
+    messages = types.SimpleNamespace(create=lambda **kw: resp)
+    return lambda *a, **kw: types.SimpleNamespace(beta=types.SimpleNamespace(messages=messages))
+
+
+GOOD_ANSWER = json.dumps({"sentences": [{"text": "Survival was 63% in 2024.", "fact_ids": ["a"]}]})
+
+
+@pytest.mark.parametrize("stop_reason, text, usable", [
+    ("end_turn", GOOD_ANSWER, True),
+    ("max_tokens", GOOD_ANSWER, False),      # cut off: the JSON may be incomplete
+    ("refusal", "", False),
+    ("end_turn", "not json at all", False),
+    ("end_turn", '["a list, not an object"]', False),
+])
+def test_a_model_answer_that_stops_early_or_is_not_json_is_not_used(monkeypatch, stop_reason, text, usable):
+    monkeypatch.setenv("PATHWAY_LLM", "1")
+    monkeypatch.setattr("anthropic.Anthropic", _fake_anthropic(stop_reason, text))
+    drafted = analyst.llm_sentences(FACTS)
+    assert (drafted is not None) is usable
+    pathway = A.locate(data, "bowel", "06")
+    fact_list = F.survival_and_screening_facts(data, "bowel", "06") + F.pathway_and_action_facts(pathway, [])
+    out = analyst.summarize(data, "bowel", "06", pathway, [], fact_list)
+    # The good answer cites a fact this briefing does not have, so the template takes over in every case.
+    assert out["writer"] == "template" and out["sentences"]
+
+
 def test_a_model_draft_that_fails_the_check_falls_back_to_the_template(monkeypatch):
     monkeypatch.setattr(analyst, "llm_sentences", lambda facts: [{"text": "Survival fell by 99 points.", "fact_ids": ["pathway"]}])
     pathway = A.locate(data, "bowel", "09")
@@ -98,6 +139,38 @@ def test_headline_screening_values_equal_the_raw_minimum():
         raw = min(raw_value(ind, c, h["year"]) for c in data.counties)
         assert h["value"] == raw
         assert h["below_target"] == sum(raw_value(ind, c, h["year"]) < h["target"] for c in data.counties)
+
+
+def test_helsinki_has_the_lowest_breast_screening_attendance_in_every_published_year():
+    bowel, breast = headlines()["screening"]
+    assert breast["lowest"] == "Helsinki"
+    assert breast["lowest_years"] == breast["n_years"] >= 6
+    years = sorted(data.series(3621, "90"))
+    assert (breast["first_year"], breast["year"], breast["n_years"]) == (years[0], years[-1], len(years))
+    for y in years:
+        assert raw_value(3621, "90", y) == min(raw_value(3621, c, y) for c in data.counties)
+    # Bowel screening is different: Helsinki is lowest in the latest year, but not in every year.
+    assert bowel["lowest"] == "Helsinki" and bowel["lowest_years"] < bowel["n_years"]
+
+
+def test_satakunta_bowel_survival_is_below_finland_in_every_published_year():
+    g = A.gap(data, 3627, "06")
+    assert data.names["06"] == "Satakunta"
+    assert (g.direction, g.persistence) == ("below", "persistent")
+    assert g.years_same_side == len(g.years) == 6 and (g.years[0], g.year) == (2019, 2024)
+    assert g.gap == raw_value(3627, "06", 2024) - data.series(3627, NATIONAL)[2024]
+    b = _briefing("bowel", "06")
+    assert (b["pathway"]["step"], b["pathway"]["evidence"]) == ("later", "persistent")
+    assert b["recommendations"][0]["measure"] == "2.5.2"
+    assert b["facts"]["pathway"]["text"].startswith("Question to investigate:")
+
+
+def test_map_layer_gives_the_latest_year_gap_and_the_persistence():
+    from backend.app import map_layer
+    d = map_layer(3627)["counties"]["06"]
+    assert (d["latest"], d["year"], d["gap"], d["direction"]) == (64, 2024, -4.0, "below")
+    assert (d["persistence"], d["years_same_side"], d["n_years"]) == ("persistent", 6, 6)
+    assert "confidence" not in d
 
 
 def test_channel_share_equals_the_raw_visit_counts():
@@ -179,6 +252,21 @@ def test_every_measure_says_who_acts_how_to_start_and_what_success_is():
         assert m["success_source"] in sources, mid
 
 
+def test_low_screening_first_asks_who_does_not_attend_and_does_not_presume_a_cause():
+    """The cause of low attendance is not known, so the first action is to find the groups, not to target one."""
+    for cancer, county, b in all_briefings():
+        if b["pathway"]["step"] in ("detection", "watch"):
+            assert [r["measure"] for r in b["recommendations"]][:2] == ["2.4.5", "1.3.1"], (cancer, county)
+    assert MEASURES["1.3.1"]["action"].startswith("If language groups are among")
+    assert _briefing("breast", "90")["recommendations"][0]["measure"] == "2.4.5"  # Helsinki
+
+
+def test_the_strategy_and_the_roadmap_have_public_links():
+    sources = data.sources()
+    assert sources["strategy"]["url"].endswith("Kansallinen_syopastrategia_2026_2035_FINAL.pdf")
+    assert sources["roadmap"]["url"].endswith("toimeenpanon_tiekartta_2026_2031.pdf")
+
+
 def test_ranking_puts_counties_behind_in_more_registers_first():
     from backend.priorities import ranking
     r = ranking(data, mort, "bowel")
@@ -190,12 +278,18 @@ def test_ranking_puts_counties_behind_in_more_registers_first():
     assert all(s["source"] in sources for row in r["rows"] for s in row["signals"])
 
 
-def test_a_signal_needs_confidence_and_deaths_count_as_one_register():
+def test_a_signal_needs_a_persistent_gap_and_deaths_count_as_one_register():
     from backend.priorities import ranking, signals
     for cancer in CANCERS:
         for row in ranking(data, mort, cancer)["rows"]:
             kinds = {s["kind"].split(":")[0] for s in row["signals"]}
             assert row["registers"] == len(kinds) <= 3
-    # Päijät-Häme, bowel cancer: survival is behind with high confidence, screening is not behind.
+            for s in row["signals"]:
+                if s["kind"] in ("survival", "screening"):
+                    g = A.gap(data, CANCERS[cancer][s["kind"]], row["code"])
+                    assert (g.direction, g.persistence) == ("below", "persistent"), (cancer, row["name"])
+    # Päijät-Häme, bowel cancer: survival is below Finland in 4 of 6 years, screening is not below.
     kinds = [s["kind"] for s in signals(data, mort, "bowel", "09")]
     assert "survival" in kinds and "screening" not in kinds
+    # Helsinki, breast cancer: survival is 1 point below in 2024 but was not below in most years, so it is no signal.
+    assert "survival" not in [s["kind"] for s in signals(data, mort, "breast", "90")]
