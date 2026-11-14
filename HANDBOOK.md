@@ -78,7 +78,7 @@ Set `PATHWAY_LLM=0` for the demo. Then the fixed template writes the three sente
 1. "Two patients have the same cancer. One starts at a public health centre, and one starts in occupational care." Point at the first headline: 127 days against 76 days.
 2. Pick bowel cancer in Satakunta. Read the three sentences.
 3. Show the first action and its line "Start locally": count the days from first contact to referral in each health centre.
-4. Show the timeline. The public route took 84 days longer, and 40 of them passed in primary care. Say that it is one lymphoma study.
+4. Show the timeline. In figure 1 of the paper, the public route ends 84 days later, and 40 of these days passed in primary care. Say that it is one lymphoma study, and that the paper tests only the medians of 127 and 76 days.
 5. Show the county pilot panel: the five intervals that the tool computes from the county's own records. End on the follow-up project with a county.
 
 Say three limits out loud. First, the timeline is one study of 160 lymphoma patients, and the public group was older. Second, survival describes care given up to ten years ago. Third, the local steps are our proposals, and no county reviewed them. The page holds the other limits.
