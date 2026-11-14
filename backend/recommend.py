@@ -1,4 +1,4 @@
-"""Map a located gap to roadmap measures. Each recommendation names its measure and its evidence.
+"""Map a pathway question to roadmap measures. Each recommendation names its measure and its evidence.
 
 `page` is the page of the measure heading in the roadmap PDF, as printed. `first_step` restates
 the measure's own implementation paragraph ("Toteutus") on that page. `level` says who must act:
@@ -8,7 +8,7 @@ FICAN, and "both" needs a national decision that each county then applies.
 
 from __future__ import annotations
 
-from .analysis import Pathway, gap
+from .analysis import ATTENDANCE, Pathway, gap
 from .indicators import CANCERS, has_county_survival
 from .sotkanet import CountyData
 
@@ -39,7 +39,7 @@ MEASURES: dict[str, dict] = {
     },
     "2.5.1": {
         "action": "Add doctor resources in public primary care, for example by making the personal doctor model national.",
-        "detail": "The roadmap reports that diagnosis took twice as long through public care as through private care in a study of lymphoma patients (page 11).",
+        "detail": "The roadmap reports that diagnosis took twice as long through public care as through private care in one unpublished study of lymphoma patients (page 11).",
         "nordic": None,
         "steps": ["later"],
         "actor": "County",
@@ -50,26 +50,26 @@ MEASURES: dict[str, dict] = {
         "page": 51,
     },
     "1.3.1": {
-        "action": "Raise screening attendance in language groups with targeted, community-based communication.",
-        "detail": "Immigrants take part in screening less (roadmap, page 11).",
+        "action": "If language groups are among the people who do not attend, raise their attendance with targeted, community-based communication.",
+        "detail": "The roadmap reports that immigrants take part in screening less (page 11). The cause of low attendance in this county is not known.",
         "nordic": None,
         "steps": ["detection"],
         "actor": "County, with THL",
         "level": "account",
         "first_step": 'Produce multilingual, plain-language material and build targeted communication with language and cultural minority organisations.',
-        "success": "Screening attendance of 80% in every county, the strategy's target. Sotkanet publishes it per county each year.",
+        "success": "Attendance of 80% in the screening programme in every county, the strategy's target. Sotkanet publishes it per county each year.",
         "success_source": "strategy",
         "page": 33,
     },
     "2.4.5": {
-        "action": "Use screening register data together with THL to find the groups that do not attend.",
-        "detail": None,
+        "action": "Use screening register data together with THL to find which groups do not attend.",
+        "detail": "The attendance figure counts the public programme only, so first learn who has no test at all.",
         "nordic": None,
         "steps": ["detection"],
         "actor": "County and THL",
         "level": "both",
         "first_step": 'Report all screening data monthly to the screening registers, so that the Cancer Registry can give each county a current picture.',
-        "success": "Screening attendance of 80% in every county, the strategy's target. Sotkanet publishes it per county each year.",
+        "success": "Attendance of 80% in the screening programme in every county, the strategy's target. Sotkanet publishes it per county each year.",
         "success_source": "strategy",
         "page": 50,
     },
@@ -124,6 +124,19 @@ MEASURES: dict[str, dict] = {
 }
 
 
+# Breast cancer: what measure 2.4.5 means when attendance in the public programme is low.
+# `note` is our reading of two studies, not text from the roadmap.
+BREAST_ATTENDANCE = {
+    "action": "Find who has no mammogram at all. Together with THL, link the screening register with the "
+              "mammograms made outside the programme, then find which groups do not attend.",
+    "note": "A Finnish Cancer Registry study made this link for the whole country. Upper-level employees used "
+            "imaging outside the programme about twice as often as manual workers (8.2% against 3.6%). "
+            "After the link, send reminders to the women with no mammogram in either place, and measure the "
+            "effect. In a review of 54 studies, half of the tested ways to raise attendance had a clear effect.",
+    "note_sources": ["fuhrmann_2024", "acharya_2021"],
+}
+
+
 def recommend(data: CountyData, pathway: Pathway, county: str) -> list[dict]:
     """The ordered list of recommendations. The first one is the first action.
     `evidence` holds the IDs of the facts that support a recommendation."""
@@ -140,9 +153,13 @@ def recommend(data: CountyData, pathway: Pathway, county: str) -> list[dict]:
     if pathway.step == "national":
         ids = ["2.3.4", "1.3.2", "2.5.2", "3.2.1"]
     elif pathway.step in ("detection", "watch"):
-        ids = ["1.3.1", "2.4.5", "1.3.2", "3.2.1"]
+        # The cause of low attendance is not known, so the first action finds who does not attend.
+        ids = ["2.4.5", "1.3.1", "1.3.2", "3.2.1"]
     elif pathway.step == "later":
         ids = ["2.5.2", "3.1.2", "2.5.1", "3.2.1"]
+    elif pathway.step == "any":
+        # The step is open. Both first measures act on patients with symptoms, at first contact and at referral.
+        ids = ["2.5.2", "1.3.2", "3.1.2", "3.2.1"]
     else:
         ids = ["3.2.1"]
 
@@ -163,19 +180,26 @@ def recommend(data: CountyData, pathway: Pathway, county: str) -> list[dict]:
             "page": m["page"],
             "evidence": evidence if "data" not in m["steps"] else [],
             "why": _why(mid, surv, scr, pathway.step),
+            "note": None,
+            "note_sources": [],
         })
+        if mid == "2.4.5" and pathway.cancer == "breast":
+            out[-1] |= BREAST_ATTENDANCE
     return out
 
 
 def _why(mid: str, surv: str, scr: str, step: str) -> str:
     if mid == "3.2.1":
-        return "The data to locate the gap more exactly does not exist in public form."
+        return "The data that would answer the question does not exist in public form."
     if step == "national":
         return "Finland is far below the Nordic level, and the county's death count shows how many patients the gap concerns."
+    if step == "any":
+        return ("Survival is below the national value, and the data cannot tell which step. National screening is "
+                "newer than most of these diagnoses, and this measure acts on patients who come with symptoms.")
     if surv == "below" and scr == "below":
-        return "Survival and screening attendance are both below the national value."
+        return f"Survival and {ATTENDANCE} are both below the national value."
     if scr == "below":
-        return "Screening attendance is below the national value, although survival is not yet."
+        return f"{ATTENDANCE[0].upper() + ATTENDANCE[1:]} is below the national value. Survival is not."
     if surv == "below":
-        return "Survival is below the national value while screening attendance is not."
+        return f"Survival is below the national value while {ATTENDANCE} is not."
     return "No survival gap. The measure keeps the pathway visible."

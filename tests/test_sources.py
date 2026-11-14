@@ -2,12 +2,13 @@
 
 import json
 import re
+import types
 
 import pytest
 
 from backend import analysis as A
 from backend import analyst, facts as F, nordcan
-from backend.analyst import check, template
+from backend.analyst import check
 from backend.app import WEB, _briefing, data, headlines, mort, nc, svf
 from backend.channel import channel
 from backend.indicators import CANCERS, NATIONAL
@@ -51,6 +52,46 @@ def test_template_sentences_all_survive_the_check():
         assert len(b["summary"]["sentences"]) >= 2, (cancer, county)
 
 
+def test_no_sentence_or_fact_averages_years_or_claims_where_a_gap_starts():
+    for cancer, county, b in all_briefings():
+        texts = [s["text"] for s in b["summary"]["sentences"]] + [f["text"] for f in b["facts"].values()]
+        texts.append(b["pathway"]["reason"])
+        for t in texts:
+            assert "most likely" not in t.lower() and "confidence)" not in t, (cancer, county, t)
+        # "average" stays only in the mortality facts, where deaths per year are a real average of pooled years.
+        assert all("average" not in s["text"] for s in b["summary"]["sentences"]), (cancer, county)
+        assert all("average" not in f["text"] for i, f in b["facts"].items() if not i.startswith("mort.")), (cancer, county)
+
+
+def _fake_anthropic(stop_reason: str, text: str):
+    """A stand-in for anthropic.Anthropic whose one call returns a fixed answer."""
+    resp = types.SimpleNamespace(stop_reason=stop_reason, content=[types.SimpleNamespace(type="text", text=text)])
+    messages = types.SimpleNamespace(create=lambda **kw: resp)
+    return lambda *a, **kw: types.SimpleNamespace(beta=types.SimpleNamespace(messages=messages))
+
+
+GOOD_ANSWER = json.dumps({"sentences": [{"text": "Survival was 63% in 2024.", "fact_ids": ["a"]}]})
+
+
+@pytest.mark.parametrize("stop_reason, text, usable", [
+    ("end_turn", GOOD_ANSWER, True),
+    ("max_tokens", GOOD_ANSWER, False),      # cut off: the JSON may be incomplete
+    ("refusal", "", False),
+    ("end_turn", "not json at all", False),
+    ("end_turn", '["a list, not an object"]', False),
+])
+def test_a_model_answer_that_stops_early_or_is_not_json_is_not_used(monkeypatch, stop_reason, text, usable):
+    monkeypatch.setenv("PATHWAY_LLM", "1")
+    monkeypatch.setattr("anthropic.Anthropic", _fake_anthropic(stop_reason, text))
+    drafted = analyst.llm_sentences(FACTS)
+    assert (drafted is not None) is usable
+    pathway = A.locate(data, "bowel", "06")
+    fact_list = F.survival_and_screening_facts(data, "bowel", "06") + F.pathway_and_action_facts(pathway, [])
+    out = analyst.summarize(data, "bowel", "06", pathway, [], fact_list)
+    # The good answer cites a fact this briefing does not have, so the template takes over in every case.
+    assert out["writer"] == "template" and out["sentences"]
+
+
 def test_a_model_draft_that_fails_the_check_falls_back_to_the_template(monkeypatch):
     monkeypatch.setattr(analyst, "llm_sentences", lambda facts: [{"text": "Survival fell by 99 points.", "fact_ids": ["pathway"]}])
     pathway = A.locate(data, "bowel", "09")
@@ -72,6 +113,7 @@ def test_every_fact_names_a_known_source_and_every_cited_fact_exists():
         assert all(i in b["facts"] for i in cited), (cancer, county)
         assert all(r["measure"] in MEASURES for r in b["recommendations"])
         assert all(m["source"] in sources for m in b["missing"])
+        assert all(s in sources for r in b["recommendations"] for s in r["note_sources"]), (cancer, county)
 
 
 def test_every_source_the_page_cites_by_name_exists():
@@ -98,6 +140,76 @@ def test_headline_screening_values_equal_the_raw_minimum():
         raw = min(raw_value(ind, c, h["year"]) for c in data.counties)
         assert h["value"] == raw
         assert h["below_target"] == sum(raw_value(ind, c, h["year"]) < h["target"] for c in data.counties)
+
+
+def test_helsinki_has_the_lowest_breast_screening_attendance_in_every_published_year():
+    bowel, breast = headlines()["screening"]
+    assert breast["lowest"] == "Helsinki"
+    assert breast["lowest_years"] == breast["n_years"] >= 6
+    years = sorted(data.series(3621, "90"))
+    assert (breast["first_year"], breast["year"], breast["n_years"]) == (years[0], years[-1], len(years))
+    for y in years:
+        assert raw_value(3621, "90", y) == min(raw_value(3621, c, y) for c in data.counties)
+    # Bowel screening is different: Helsinki is lowest in the latest year, but not in every year.
+    assert bowel["lowest"] == "Helsinki" and bowel["lowest_years"] < bowel["n_years"]
+
+
+def test_satakunta_bowel_survival_is_below_finland_in_every_published_year():
+    g = A.gap(data, 3627, "06")
+    assert data.names["06"] == "Satakunta"
+    assert (g.direction, g.persistence) == ("below", "persistent")
+    assert g.years_same_side == len(g.years) == 6 and (g.years[0], g.year) == (2019, 2024)
+    assert g.gap == raw_value(3627, "06", 2024) - data.series(3627, NATIONAL)[2024]
+    b = _briefing("bowel", "06")
+    assert (b["pathway"]["step"], b["pathway"]["evidence"]) == ("any", "interval_excludes_zero")
+    assert b["recommendations"][0]["measure"] == "2.5.2"
+    assert b["facts"]["pathway"]["text"].startswith("Question to investigate:")
+    iv = A.survival_interval(data, "bowel", "06")  # the handbook graphic shows these numbers
+    assert (iv.patients, iv.se, iv.low, iv.high) == (1530, 1.3, -6.5, -1.5)
+
+
+def test_satakunta_bowel_interval_and_the_sentence_and_fact_that_cite_it():
+    iv = A.survival_interval(data, "bowel", "06")
+    assert (iv.cases_per_year, iv.patients, iv.se, iv.low, iv.high, iv.excludes_zero) == (153, 1530, 1.3, -6.5, -1.5, True)
+    b = _briefing("bowel", "06")
+    fact = b["facts"]["3627.interval"]
+    assert "6.5 to 1.5 points below the national value" in fact["text"]
+    assert "our estimate" in fact["text"] and "not a published interval" in fact["text"]
+    assert fact["source"] == "survival_interval"
+    first = b["summary"]["sentences"][0]
+    assert "rough 95% interval for the gap is 6.5 to 1.5 points below" in first["text"]
+    assert "3627.interval" in first["fact_ids"]
+    assert b["chart"]["interval"]["low"] == -6.5 and b["chart"]["n_years"] == 6
+
+
+def test_no_bowel_sentence_or_reason_explains_survival_with_screening():
+    for county in data.counties:
+        b = _briefing("bowel", county)
+        if b["pathway"]["step"] == "any":
+            assert all("ttendance" not in s["text"] and "creening" not in s["text"] for s in b["summary"]["sentences"]), county
+            assert "ttendance" not in b["pathway"]["reason"], county
+            assert "ttendance" not in b["recommendations"][0]["why"], county
+        assert b["pathway"]["step"] not in ("detection", "later"), county
+        assert "6103.county.2024" in b["facts"]  # attendance stays on the page as its own fact
+
+
+def test_attendance_is_always_called_attendance_in_the_public_programme():
+    for cancer, county, b in all_briefings():
+        texts = [s["text"] for s in b["summary"]["sentences"]] + [f["text"] for f in b["facts"].values()]
+        texts += [b["pathway"]["reason"]] + [r["why"] for r in b["recommendations"]]
+        assert all("screening attendance" not in t.lower() for t in texts), (cancer, county)
+        if b["pathway"]["step"] in ("detection", "watch"):
+            assert any("counts the public programme only" in c for c in b["pathway"]["caveats"]), (cancer, county)
+
+
+def test_map_layer_gives_the_latest_year_gap_and_the_persistence():
+    from backend.app import map_layer
+    d = map_layer(3627)["counties"]["06"]
+    assert (d["latest"], d["year"], d["gap"], d["direction"]) == (64, 2024, -4.0, "below")
+    assert (d["persistence"], d["years_same_side"], d["n_years"]) == ("persistent", 6, 6)
+    assert (d["interval"]["low"], d["interval"]["high"], d["interval"]["excludes_zero"]) == (-6.5, -1.5, True)
+    assert "confidence" not in d
+    assert "interval" not in map_layer(6103)["counties"]["06"]  # attendance has no patient-count interval
 
 
 def test_channel_share_equals_the_raw_visit_counts():
@@ -179,6 +291,25 @@ def test_every_measure_says_who_acts_how_to_start_and_what_success_is():
         assert m["success_source"] in sources, mid
 
 
+def test_low_screening_first_asks_who_does_not_attend_and_does_not_presume_a_cause():
+    """The cause of low attendance is not known, so the first action is to find the groups, not to target one."""
+    for cancer, county, b in all_briefings():
+        if b["pathway"]["step"] in ("detection", "watch"):
+            assert [r["measure"] for r in b["recommendations"]][:2] == ["2.4.5", "1.3.1"], (cancer, county)
+    assert MEASURES["1.3.1"]["action"].startswith("If language groups are among")
+    first = _briefing("breast", "90")["recommendations"][0]  # Helsinki
+    assert first["measure"] == "2.4.5" and first["action"].startswith("Find who has no mammogram at all")
+    assert first["note_sources"] == ["fuhrmann_2024", "acharya_2021"]
+    assert "outside the programme" in first["note"] and "reminders" in first["note"] and "trial" not in first["note"]
+    assert _briefing("cervical", "06")["recommendations"][0]["note"] is None  # the two studies are about mammography
+
+
+def test_the_strategy_and_the_roadmap_have_public_links():
+    sources = data.sources()
+    assert sources["strategy"]["url"].endswith("Kansallinen_syopastrategia_2026_2035_FINAL.pdf")
+    assert sources["roadmap"]["url"].endswith("toimeenpanon_tiekartta_2026_2031.pdf")
+
+
 def test_ranking_puts_counties_behind_in_more_registers_first():
     from backend.priorities import ranking
     r = ranking(data, mort, "bowel")
@@ -190,12 +321,23 @@ def test_ranking_puts_counties_behind_in_more_registers_first():
     assert all(s["source"] in sources for row in r["rows"] for s in row["signals"])
 
 
-def test_a_signal_needs_confidence_and_deaths_count_as_one_register():
+def test_a_survival_signal_needs_an_interval_below_zero_and_an_attendance_signal_a_persistent_gap():
     from backend.priorities import ranking, signals
     for cancer in CANCERS:
         for row in ranking(data, mort, cancer)["rows"]:
             kinds = {s["kind"].split(":")[0] for s in row["signals"]}
             assert row["registers"] == len(kinds) <= 3
-    # Päijät-Häme, bowel cancer: survival is behind with high confidence, screening is not behind.
+            for s in row["signals"]:
+                if s["kind"] == "survival":
+                    g = A.gap(data, CANCERS[cancer]["survival"], row["code"])
+                    assert g.direction == "below" and A.survival_interval(data, cancer, row["code"]).excludes_zero
+                if s["kind"] == "screening":
+                    g = A.gap(data, CANCERS[cancer]["screening"], row["code"])
+                    assert (g.direction, g.persistence) == ("below", "persistent"), (cancer, row["name"])
+    # Päijät-Häme, bowel cancer: survival is 5 points below with an interval below zero, attendance is not below.
     kinds = [s["kind"] for s in signals(data, mort, "bowel", "09")]
     assert "survival" in kinds and "screening" not in kinds
+    # Helsinki, breast cancer: survival is 1 point below in 2024, which the rounding alone can explain. No signal.
+    assert "survival" not in [s["kind"] for s in signals(data, mort, "breast", "90")]
+    # Satakunta, cervical cancer: 4 points below, but about 70 patients, so the interval includes zero. No signal.
+    assert "survival" not in [s["kind"] for s in signals(data, mort, "cervical", "06")]

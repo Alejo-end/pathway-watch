@@ -1,15 +1,19 @@
-"""Where to start in Finland: counties ranked by how many independent sources show them behind.
+"""Where to start in Finland: counties ranked by how many registers show them behind.
 
-A signal counts only if it is confident: a Sotkanet gap below Finland with high or medium
-confidence, or more deaths than expected with a 95% interval above 100 (Statistics Finland).
-Survival, screening and deaths come from different registers, so a county that is behind in
-two of them is stronger evidence than one large gap. Deaths from the chosen cancer and from
+A survival signal counts when the county is below Finland in the latest year and our rough
+95% interval of the gap excludes zero (`analysis.rough_interval`). An attendance signal counts
+when the county is below Finland in the latest year and in most published years. Sotkanet
+publishes no confidence interval, so the first is our estimate and the second is a description.
+A deaths signal counts when the county has more deaths than expected with a 95% interval above
+100 (Statistics Finland). Survival, screening and
+deaths come from different registers, but survival and deaths for one cancer are related
+outcomes, so two signals are not two separate proofs. Deaths from the chosen cancer and from
 all cancers come from the same register, so together they count as one.
 """
 
 from __future__ import annotations
 
-from .analysis import gap, locate
+from .analysis import gap, locate, survival_interval
 from .indicators import CANCERS, has_county_survival
 from .mortality import LABELS, Mortality
 from .recommend import recommend
@@ -17,14 +21,18 @@ from .sotkanet import CountyData
 
 
 def signals(data: CountyData, mort: Mortality, cancer: str, county: str) -> list[dict]:
-    """The confident signals for one county. Each has a kind, a short text and the ID of its source."""
+    """The signals for one county. Each has a kind, a short text and the ID of its source."""
     out = []
     if has_county_survival(cancer):
-        for kind in ("survival", "screening"):
-            g = gap(data, CANCERS[cancer][kind], county)
-            if g.direction == "below" and g.confidence in ("high", "medium"):
-                out.append({"kind": kind, "text": f"{kind.capitalize()} {g.avg_gap:+g} points", "size": abs(g.avg_gap),
-                            "source": f"sotkanet:{g.indicator}"})
+        g = gap(data, CANCERS[cancer]["survival"], county)
+        iv = survival_interval(data, cancer, county)
+        if g.direction == "below" and iv and iv.excludes_zero:
+            out.append({"kind": "survival", "text": f"Survival {g.gap:+g} points in {g.year}", "size": abs(g.gap),
+                        "source": f"sotkanet:{g.indicator}"})
+        g = gap(data, CANCERS[cancer]["screening"], county)
+        if g.direction == "below" and g.persistence == "persistent":
+            out.append({"kind": "screening", "text": f"Programme attendance {g.gap:+g} points in {g.year}",
+                        "size": abs(g.gap), "source": f"sotkanet:{g.indicator}"})
     if mort.ok:
         for cause in dict.fromkeys([cancer, "all"]):
             m = mort.smr(cause, county)

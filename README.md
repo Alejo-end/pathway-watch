@@ -1,6 +1,6 @@
 # Pathway Watch
 
-Pathway Watch shows a decision-maker in a wellbeing services county where cancer patients do worse than elsewhere in Finland, at which step of the care pathway the difference most likely starts, and which roadmap measure to act on first. The build brief is `../PATHWAY_PLAN.md`.
+Pathway Watch is for a decision-maker in a wellbeing services county. It shows where cancer patients do worse than elsewhere in Finland and which step of the care pathway to ask about. It also shows which roadmap measure to act on first. Read `HANDBOOK.md` for an explanation with maps. The build brief is `../PATHWAY_PLAN.md`.
 
 ## Run
 
@@ -25,12 +25,12 @@ A fixed template writes the three summary sentences from the computed facts. If 
 | `data/svf_sweden.json` | Sweden's share of patients treated within the SVF lead time, per region (RCC report 2025) |
 | `backend/indicators.py` | The Sotkanet indicators, the cancers and the pathway steps |
 | `backend/sotkanet.py` | Loads the cached Sotkanet files |
-| `backend/analysis.py` | Gap, confidence, pathway rule, case estimate, simulation |
+| `backend/analysis.py` | Gap in the latest year, rough 95% interval of a survival gap, pathway rule, case estimate, simulation |
 | `backend/mortality.py` | Age-adjusted cancer mortality per county (SMR) for Goal 3 |
 | `backend/nordcan.py` | Finland against the Nordic level (the average of Sweden and Norway) |
 | `backend/channel.py` | Channel Gap: share of working-age physician visits that go through public health centres |
 | `backend/facts.py` | The computed facts, each with its source |
-| `backend/recommend.py` | Located gap to roadmap measures, each with its level, first step and measure of success |
+| `backend/recommend.py` | Pathway question to roadmap measures, each with its level, first step and measure of success |
 | `backend/priorities.py` | Where to start in Finland: counties ranked by how many registers show them behind |
 | `backend/analyst.py` | Three sentences from the facts, and the sentence check |
 | `backend/app.py` | FastAPI endpoints: `/api/meta`, `/api/headlines`, `/api/map/{indicator}`, `/api/mortality-map/{cause}`, `/api/channel-map`, `/api/national/{cancer}`, `/api/county/{code}?cancer=` |
@@ -39,9 +39,22 @@ A fixed template writes the three summary sentences from the computed facts. If 
 
 ## Open work
 
-1. Add public links for the strategy, the roadmap and THL guidance 21/2016 in `backend/sources.py`. The page numbers are filled in from the PDFs.
+1. Add a public link for THL guidance 21/2016 in `backend/sources.py`. The strategy and the roadmap have their links.
 2. Find occupational health coverage per county (Kela). The Channel Gap uses visits as a proxy.
 3. Test the language model path with `ANTHROPIC_API_KEY` set.
+4. Ask the Finnish Cancer Registry for stage at diagnosis per county. Stage tells detection from the later steps.
+
+## Evidence for a survival gap
+
+Sotkanet publishes no confidence interval. The app computes a rough 95% interval for each county survival gap in `backend/analysis.py`, `rough_interval()`. The standard error is binomial, from the estimated new cases per year times the ten diagnosis years behind one value. The rounding of the published values to whole percent is added. The page labels the interval as our estimate and says that the true interval is wider.
+
+## Bowel cancer
+
+National bowel screening started in 2022. Each survival value covers ten years of diagnoses, so attendance cannot explain a bowel cancer survival gap. For such a gap, the pathway step is "any": the data cannot tell which step. Low attendance in the new programme is still shown as an early warning.
+
+## Attendance in the public programme
+
+The Sotkanet attendance indicators count the public screening programme only. For breast cancer, the first action (measure 2.4.5) is to find who has no mammogram at all. The page cites Fuhrmann and others (Acta Oncologica 2024, https://doi.org/10.2340/1651-226X.2024.40830) for mammograms outside the programme. It cites Acharya and others (Preventive Medicine 2021, https://doi.org/10.1016/j.ypmed.2021.106828) for the mixed effect of reminders.
 
 ## Lung cancer
 
