@@ -58,6 +58,36 @@ STATIC_SOURCES: dict[str, dict] = {
         "url": "https://doi.org/10.2340/1651-226X.2025.42778",
         "note": "Survey of health care professionals in the Nordic countries, found through PubMed (PMID 40468524). Finland had the lowest access to CT from primary care, the longest waiting times in primary care and no national tracking of outcomes. The answers are the views of professionals, not measured waiting times. One author works for MSD Finland.",
     },
+    "kuitunen_2026": {
+        "title": "Kuitunen J, Marin K, Tokola S, Pollari M, Jyrkkiö S, Suominen M, Partanen A, Vuolukka K, Sunela K, Rönkä A, Aromaa-Häyhä A, Klaavuniemi T, Hakalahti A, Kuusisto MEL, Kuitunen H, Kuittinen O. Socioeconomic Status and Access to Treatment in Diffuse Large B-Cell Lymphoma. Cancer Medicine 2026;15(5):e71920",
+        "url": "https://doi.org/10.1002/cam4.71920",
+        "note": "Prospective study in seven Finnish hospitals, 2014 to 2020, found through PubMed (PMID 42108510). It is the lymphoma study that the roadmap cites as unpublished on page 11, and AstraZeneca's challenge briefing of 13 November 2026 showed it. 160 patients with one lymphoma type. Median time from first symptoms to treatment: 127 days (mean 201) for 48 patients who started at a public health centre appointment, 76 days (mean 126) for 39 patients who started in private or occupational health care (p = 0.027). The public group was older: 44% over 70 years against 8%. The patients reported the date of the first symptoms themselves. The interval includes the time before the first contact.",
+    },
+    "tokola_2025": {
+        "title": "Tokola S, Marin K, Kuusisto MEL, Kuitunen H, Pollari M, Jyrkkiö S, and others. Prolonged Time From Symptoms to Diagnosis Is Associated With an Inferior Progression-Free Survival in Diffuse Large B-Cell Lymphoma. Cancer Medicine 2025;14(22):e71409",
+        "url": "https://doi.org/10.1002/cam4.71409",
+        "note": "The same 160 patients as the 2026 study, found through PubMed (PMID 41275414). More than seven weeks from the first symptoms to the diagnostic biopsy went with a two-year progression-free survival of 74%, against 89% (p = 0.012). The whole interval from symptoms to treatment showed no such link.",
+    },
+    "zai_2025": {
+        "title": "Zai X, Li P, Dei Bardi L, Korhonen K, Moretti M, Myrskylä M, Martikainen P. Disparities in cancer incidence, stage at diagnosis, treatment and mortality across socioeconomic groups in Finland: a register-based population study. BMJ Public Health 2025;3(2):e002829",
+        "url": "https://doi.org/10.1136/bmjph-2025-002829",
+        "note": "Register study of 469,522 Finnish patients diagnosed in 2000 to 2019, found through PubMed (PMID 41141305). The values are national and come from the abstract. The study gives no county values.",
+    },
+    "az_briefing_2026": {
+        "title": "Kuitunen H. Equitable Cancer Care: How Can We Ensure It in Finland. AstraZeneca challenge briefing, Junction 2026, 13 November 2026",
+        "url": None,
+        "note": "Slides that AstraZeneca gave to the teams. The speaker is an oncologist at Oulu University Hospital, in the county of North Ostrobothnia. File in pathway-watch/docs/.",
+    },
+    "az_discord_2026": {
+        "title": "AstraZeneca answer to a team question, Junction 2026 challenge channel, 14 November 2026",
+        "url": None,
+        "note": "Laura Aaltonen of AstraZeneca, passed on by the organizers: the limit to public data applies to the hackathon. In a real setting an integrated solution can have access to the relevant patient data. PATHWAY_PLAN.md holds the full answer.",
+    },
+    "local_step": {
+        "title": "Pathway Watch proposal for a first local step, written by the team",
+        "url": None,
+        "note": "Our proposal for what one health centre or one county can start next month. It is not text of the roadmap. No county reviewed it. Code: backend/recommend.py, LOCAL_STEPS.",
+    },
     "hanna_2020": {
         "title": "Hanna TP, King WD, Thibodeau S, Jalink M, Paulin GA, Harvey-Jones E, O'Sullivan DE, Booth CM, Sullivan R, Aggarwal A. Mortality due to cancer treatment delay: systematic review and meta-analysis. BMJ 2020;371:m4087",
         "url": "https://doi.org/10.1136/bmj.m4087",

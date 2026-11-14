@@ -11,6 +11,7 @@ from __future__ import annotations
 from .analysis import ATTENDANCE, Pathway, gap
 from .indicators import CANCERS, has_county_survival
 from .sotkanet import CountyData
+from .timeline import primary_care_days
 
 MEASURES: dict[str, dict] = {
     "2.5.2": {
@@ -39,7 +40,7 @@ MEASURES: dict[str, dict] = {
     },
     "2.5.1": {
         "action": "Add doctor resources in public primary care, for example by making the personal doctor model national.",
-        "detail": "The roadmap reports that diagnosis took twice as long through public care as through private care in one unpublished study of lymphoma patients (page 11).",
+        "detail": "In a Finnish study of 160 lymphoma patients, the median time from first symptoms to treatment was 127 days through a public health centre and 76 days through private or occupational care (Kuitunen and others, Cancer Medicine 2026). The roadmap cites this study on page 11.",
         "nordic": None,
         "steps": ["later"],
         "actor": "County",
@@ -124,6 +125,38 @@ MEASURES: dict[str, dict] = {
 }
 
 
+# What one health centre or one county can start next month, without a national decision.
+# These are our proposals, not roadmap text. Source ID: local_step.
+LOCAL_STEPS: dict[str, str] = {
+    "2.5.2": "For patients with alarm symptoms, count the days from the first contact to the physician appointment "
+             "and to the referral. Report the two numbers for each health centre every month.",
+    "3.1.2": "Write down the county's pathway for this cancer as it works today, with the days that each step takes.",
+    "2.5.1": "Keep physician appointments free each week for patients with alarm symptoms, and count the days "
+             "that these patients wait.",
+    "1.3.1": "Ask the screening provider for attendance by area. Test plain-language invitations in the area with "
+             "the lowest attendance, and compare attendance before and after.",
+    "2.4.5": "Ask the Cancer Registry for the county's attendance by age group and area. Name one person who "
+             "answers for the number.",
+    "1.3.2": "Put the list of alarm symptoms and the number to call on the health centre's pages and at its reception.",
+    "2.3.4": "Tell THL that the county is ready to join the extension, and name the unit that sends the invitations.",
+    "3.1.4": "Count, from hospital records, the share of the county's patients who start treatment within the "
+             "target time. Publish the number once a year.",
+    "3.2.1": "Agree with the hospital on one extract a year: stage, referral date and treatment start for each new cancer.",
+}
+
+
+def local_step(mid: str) -> dict:
+    """The local step of a measure. For 2.5.2 it adds the days this part took in the lymphoma study."""
+    out = {"text": LOCAL_STEPS[mid], "evidence": None, "evidence_source": None}
+    if mid == "2.5.2":
+        d = primary_care_days()
+        out["evidence"] = (f"In a Finnish study of lymphoma patients, the time from first contact to referral was "
+                           f"{d['public_days']} days through a public health centre and {d['private_days']} days through "
+                           f"private or occupational care.")
+        out["evidence_source"] = "kuitunen_2026"
+    return out
+
+
 # Breast cancer: what measure 2.4.5 means when attendance in the public programme is low.
 # `note` is our reading of two studies, not text from the roadmap.
 BREAST_ATTENDANCE = {
@@ -182,6 +215,7 @@ def recommend(data: CountyData, pathway: Pathway, county: str) -> list[dict]:
             "why": _why(mid, surv, scr, pathway.step),
             "note": None,
             "note_sources": [],
+            "local": local_step(mid),
         })
         if mid == "2.4.5" and pathway.cancer == "breast":
             out[-1] |= BREAST_ATTENDANCE

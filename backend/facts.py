@@ -156,9 +156,10 @@ def channel_facts(data: CountyData, county: str) -> list[Fact]:
              f"{name} ranks {c['rank']} of {t['n']} counties on reliance on the public channel in {y} (1 = most reliant)",
              c["rank"], "rank", "sotkanet:293"),
         Fact("channel.roadmap",
-             "In one unpublished study of lymphoma patients, diagnosis took twice as long through public health care "
-             "as through private providers (roadmap, page 11)",
-             None, "", "roadmap"),
+             "In a Finnish study of 160 lymphoma patients, the median time from first symptoms to treatment was "
+             "127 days after a first contact at a public health centre and 76 days after private or occupational "
+             "health care. The public group was older, so the route is not the only difference",
+             127, "days", "kuitunen_2026"),
     ]
 
 

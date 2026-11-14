@@ -68,27 +68,27 @@ Run every command from `pathway-watch/`. You need `uv`.
 
 1. Start the app: `uv run uvicorn backend.app:app --port 8010`.
 2. Open `http://localhost:8010`.
-3. Run the tests: `uv run pytest`. 56 tests pass.
+3. Run the tests: `uv run pytest`. 63 tests pass.
 4. To refresh the open data, run `uv run python data/fetch_sotkanet.py` and `uv run python data/fetch_statfin.py`. The cached data is in the repository, so the demo needs no network.
 
 Set `PATHWAY_LLM=0` for the demo. Then the fixed template writes the three sentences. The language model path is not tested with a real key.
 
 ## Demo in two minutes
 
-1. "You lead a wellbeing services county. Where do your cancer patients fall behind?"
+1. "Two patients have the same cancer. One starts at a public health centre, and one starts in occupational care." Point at the first headline: 127 days against 76 days.
 2. Pick bowel cancer in Satakunta. Read the three sentences.
-3. Show the chart: 4 points below Finland in 2024, with a rough interval of 6.5 to 1.5 points below.
-4. Say that the data cannot tell which step. Show the first action: standardized referral criteria, roadmap measure 2.5.2. It acts on patients who come with symptoms.
-5. Switch to breast cancer in Helsinki. Survival is near Finland. Attendance in the public programme is lowest for ten years.
-6. Show the first action there (measure 2.4.5): find who has no mammogram at all, then remind those women. The cause of the low attendance is not known.
-7. Show the Sweden panel and the "data that is missing" list. End on the follow-up project with a county.
+3. Show the first action and its line "Start locally": count the days from first contact to referral in each health centre.
+4. Show the timeline. The public route took 84 days longer, and 40 of them passed in primary care. Say that it is one lymphoma study.
+5. Show the county pilot panel: the five intervals that the tool computes from the county's own records. End on the follow-up project with a county.
+
+Say three limits out loud. First, the timeline is one study of 160 lymphoma patients, and the public group was older. Second, survival describes care given up to ten years ago. Third, the local steps are our proposals, and no county reviewed them. The page holds the other limits.
 
 ## How the judges score
 
 | Criterion | Weight | Where the app answers it |
 |---|---|---|
-| Actionability | 30% | The first action card: the roadmap measure, who acts, the first step and how success is measured |
-| Insight | 25% | The gap, the pathway picture and the question to investigate |
+| Actionability | 30% | The first action card: the roadmap measure, who acts, a step to start locally, the roadmap step and how success is measured. The county pilot panel |
+| Insight | 25% | The gap, the pathway picture and the question to investigate. The timeline of one lymphoma study, step by step, for two routes into care |
 | Data quality and transparency | 20% | A source for every number, the limits below, and the list of missing data |
 | Execution | 15% | A live demo with cached data, so it needs no network |
 | Clarity | 10% | Three sentences at the top of the page |
@@ -98,7 +98,7 @@ Set `PATHWAY_LLM=0` for the demo. Then the fixed template writes the three sente
 1. Survival describes care given up to ten years ago. The slider is an illustration of the size of the gap, not a forecast.
 2. Sotkanet publishes no confidence interval. The interval on the page is our rough estimate, and the true interval is wider. "Below in 6 of 6 years" is a description, not a test.
 3. Deaths are compared with a 95% interval. With 22 counties, about one county per cancer crosses that limit by chance.
-4. "Diagnosis took twice as long through public care" is one unpublished study of lymphoma patients, cited in the roadmap on page 11.
+4. The channel finding is one study of 160 patients with one lymphoma type ([Kuitunen and others, Cancer Medicine 2026](https://doi.org/10.1002/cam4.71920)). The median time from first symptoms to treatment was 127 days through a public health centre and 76 days through private or occupational care. The public group was older. The roadmap cites the study on page 11 as unpublished.
 5. The public share of doctor visits is a stand-in for channel use. No public source gives occupational health coverage per county.
 6. The NORDCAN values and Sweden's waiting times were copied by hand from the sources. A test checks that Sweden's regions add up to the national value.
 7. Case counts per county are the national count split by population. The page marks them as estimates.
@@ -113,6 +113,10 @@ Set `PATHWAY_LLM=0` for the demo. Then the fixed template writes the three sente
 16. Relative survival removes the deaths that people of the same age and sex have anyway. It does not adjust for stage or for other illness. So a gap can come from sicker patients and not from care.
 17. Stage per county helps, with one caution. A county that scans more finds more spread and moves patients to a higher stage. Survival within each stage then rises with no change for any patient ([Feinstein and others, New England Journal of Medicine 1985](https://doi.org/10.1056/NEJM198506203122504)).
 18. The app treats treatment as one step. It has no data on surgery, radiotherapy or medicines per county.
+19. The timeline shows one study. Its days come from figure 1 of the paper, which does not say if they are means. The paper tests the whole interval only. The split by owner (patient, primary care, hospital) is ours.
+20. The line "Start locally" on each action is our proposal. It is not roadmap text, and no county reviewed it.
+21. The county pilot panel names the records that hold each date. That is our reading of the registers. No county confirmed the fields or the legal basis.
+22. The values by income and education are national. The app has no such values for a county.
 
 ## What is open
 
@@ -137,7 +141,9 @@ Set `PATHWAY_LLM=0` for the demo. Then the fixed template writes the three sente
 | `backend/analysis.py` | The gap, the rough interval, the pathway rule, the simulation |
 | `backend/mortality.py` | Deaths against the number expected from the age structure |
 | `backend/facts.py`, `backend/analyst.py` | The facts, the three sentences and the sentence check |
-| `backend/recommend.py` | Roadmap measures, with level, first step and measure of success |
+| `backend/recommend.py` | Roadmap measures, with level, first step, local step and measure of success |
+| `backend/timeline.py`, `data/dlbcl_timeline.json` | The step timeline of the lymphoma study and the county pilot |
+| `backend/equity.py` | National values by income and education |
 | `backend/priorities.py` | Where to start in Finland |
 | `backend/sources.py` | Every source the page cites |
 | `data/raw/`, `data/nordcan.json`, `data/svf_sweden.json` | The cached data |

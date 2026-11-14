@@ -1,7 +1,8 @@
 """Channel Gap: how much of working-age primary care goes through the public health centre.
 
-The roadmap (page 11) reports that diagnosis took twice as long when a patient with symptoms
-went to public health care instead of a private provider (an unpublished lymphoma study).
+In a Finnish study of 160 lymphoma patients, the median time from first symptoms to treatment
+was 127 days after a first contact at a public health centre and 76 days after private or
+occupational care (Kuitunen and others, Cancer Medicine 2026). The roadmap cites it on page 11.
 Finland has three parallel channels: public health centres, private clinics and occupational
 health care. A county where more first contacts go through the public channel has more people
 exposed to that delay.

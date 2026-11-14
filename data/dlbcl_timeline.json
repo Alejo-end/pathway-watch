@@ -1,0 +1,16 @@
+{
+  "source": "kuitunen_2026",
+  "note": "Copied by hand from figure 1 of the paper: days from the first day of symptoms to each step. The figure does not say if the values are means. The text gives means of 201 and 126 days and medians of 127 and 76 days for the whole interval.",
+  "groups": {
+    "public": {"label": "Public health centre appointment", "patients": 48, "median_total": 127},
+    "private": {"label": "Private or occupational care", "patients": 39, "median_total": 76}
+  },
+  "p_value_total": 0.027,
+  "steps": [
+    {"key": "contact", "label": "First contact", "public": 72, "private": 42},
+    {"key": "physician", "label": "Physician appointment", "public": 94, "private": 43},
+    {"key": "referral", "label": "Referral", "public": 147, "private": 77},
+    {"key": "specialist", "label": "Specialist appointment", "public": 204, "private": 118},
+    {"key": "treatment", "label": "Start of treatment", "public": 207, "private": 123}
+  ]
+}

@@ -30,12 +30,15 @@ A fixed template writes the three summary sentences from the computed facts. If 
 | `backend/nordcan.py` | Finland against the Nordic level (the average of Sweden and Norway) |
 | `backend/channel.py` | Channel Gap: share of working-age physician visits that go through public health centres |
 | `backend/facts.py` | The computed facts, each with its source |
-| `backend/recommend.py` | Pathway question to roadmap measures, each with its level, first step and measure of success |
+| `backend/recommend.py` | Pathway question to roadmap measures, each with its level, first step, local step and measure of success |
+| `data/dlbcl_timeline.json` | Days from first symptoms to each step for two routes into care, copied by hand from figure 1 of Kuitunen and others (Cancer Medicine 2026) |
+| `backend/timeline.py` | The length of each step, the extra days on the public route, and what a county pilot measures |
+| `backend/equity.py` | National values by income and education (Zai and others, BMJ Public Health 2025) |
 | `backend/priorities.py` | Where to start in Finland: counties ranked by how many registers show them behind |
 | `backend/analyst.py` | Three sentences from the facts, and the sentence check |
-| `backend/app.py` | FastAPI endpoints: `/api/meta`, `/api/headlines`, `/api/map/{indicator}`, `/api/mortality-map/{cause}`, `/api/channel-map`, `/api/national/{cancer}`, `/api/county/{code}?cancer=` |
+| `backend/app.py` | FastAPI endpoints: `/api/meta`, `/api/headlines`, `/api/map/{indicator}`, `/api/mortality-map/{cause}`, `/api/channel-map`, `/api/evidence`, `/api/national/{cancer}`, `/api/county/{code}?cancer=` |
 | `web/index.html` | The two-minute view |
-| `tests/` | `test_analysis.py` covers the rules. `test_sources.py` traces numbers to the raw files and checks every source ID |
+| `tests/` | `test_analysis.py` covers the rules. `test_sources.py` traces numbers to the raw files and checks every source ID. `test_evidence.py` covers the timeline, the local steps and the equity values |
 
 ## Open work
 

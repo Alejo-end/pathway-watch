@@ -159,6 +159,20 @@ table.g3 th { font-size: 13px; color: var(--muted); font-weight: 600; border-bot
 .bars { display: grid; grid-template-columns: 124px 1fr 40px; gap: 4px 10px; align-items: center; font-size: 13px; }
 .bars .t { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--ink); }
 .empty { border: 2px dashed var(--muted); background: transparent; }
+/* Timeline: one bar per route, on one scale of days. A segment is one step, coloured by who owns it. */
+.tl { display: grid; grid-template-columns: minmax(110px, 190px) 1fr 76px; gap: 10px 14px; align-items: center; font-size: 14px; margin: 6px 0 12px; }
+.tl .who { font-weight: 600; line-height: 1.2; }
+.tl .who small { display: block; font-weight: 400; color: var(--muted); font-size: 13px; }
+.tl .bar2 { display: flex; height: 34px; gap: 2px; }
+.tl .sg { display: flex; align-items: center; justify-content: center; min-width: 3px; color: #fff; font-size: 12.5px; font-weight: 700; overflow: hidden; white-space: nowrap; }
+.sg.patient, .legend i.patient { background: var(--muted); }
+.sg.primary, .legend i.primary { background: var(--below); }
+.sg.hospital, .legend i.hospital { background: var(--accent); color: var(--on-accent); }
+.tl .tot { font-weight: 800; font-size: 20px; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.tl .tot small { display: block; font-size: 12px; font-weight: 400; color: var(--muted); letter-spacing: 0; }
+@media (max-width: 600px) { .tl { grid-template-columns: 1fr 64px; } .tl .who { grid-column: 1 / -1; } }
+.tablewrap { overflow-x: auto; }
+td.extra { font-weight: 700; }
 .lead { font-size: 17px; font-weight: 500; margin: 0 0 14px; max-width: 70ch; }
 .sources ol { margin: 0; padding-left: 26px; font-size: 13.5px; max-width: 90ch; }
 .sources li { margin-bottom: 6px; padding: 1px 4px; }
@@ -194,6 +208,10 @@ footer { border-top: 3px solid var(--rule); color: var(--muted); font-size: 13px
       <div class="action" id="action"></div>
       <div class="more" id="morewrap"><ul class="rows" id="more"></ul></div>
     </section>
+    <section class="panel" id="timeline">
+      <h2>Where the days add up on the way to treatment</h2>
+      <div id="timelinebody"></div>
+    </section>
     <section class="panel" id="national">
       <h2 id="nationaltitle">Where to start in Finland</h2>
       <div id="nationalbody"></div>
@@ -212,9 +230,17 @@ footer { border-top: 3px solid var(--rule); color: var(--muted); font-size: 13px
       <h2>Who depends on public health centres for the first visit</h2>
       <div id="channelbody"></div>
     </section>
+    <section class="panel" id="equity">
+      <h2>Income and education: a gap this page cannot show for a county</h2>
+      <div id="equitybody"></div>
+    </section>
     <section class="panel" id="mirror">
       <h2>The waiting-time picture Sweden publishes and Finland does not</h2>
       <div id="mirrorbody"></div>
+    </section>
+    <section class="panel" id="pilot">
+      <h2>What a county pilot measures with its own records</h2>
+      <div id="pilotbody"></div>
     </section>
     <section class="panel missing">
       <h2>Data that is missing, and the measure that would collect it</h2>
@@ -235,12 +261,12 @@ footer { border-top: 3px solid var(--rule); color: var(--muted); font-size: 13px
 <script>
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-let META, GEO, HL, state = { cancer: "bowel", county: "09", layer: "survival" }, sourceOrder = [];
+let META, GEO, HL, EV, state = { cancer: "bowel", county: "09", layer: "survival" }, sourceOrder = [];
 try { const saved = JSON.parse(localStorage.getItem("pw") || "{}"); Object.assign(state, saved); } catch (e) {}
 const save = () => { try { localStorage.setItem("pw", JSON.stringify({cancer: state.cancer, county: state.county})); } catch (e) {} };
 
 async function init() {
-  [META, GEO, HL] = await Promise.all([fetch("/api/meta").then(r => r.json()), fetch("/counties.geojson").then(r => r.json()), fetch("/api/headlines").then(r => r.json())]);
+  [META, GEO, HL, EV] = await Promise.all(["/api/meta", "/counties.geojson", "/api/headlines", "/api/evidence"].map(u => fetch(u).then(r => r.json())));
   $("#cancer").innerHTML = Object.entries(META.cancers).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join("");
   $("#county").innerHTML = META.counties.slice().sort((a, b) => a.name.localeCompare(b.name)).map(c => `<option value="${c.code}">${esc(c.name)}</option>`).join("");
   $("#cancer").value = state.cancer; $("#county").value = state.county;
@@ -420,7 +446,7 @@ async function drawBriefing() {
   $("#writer").innerHTML = (B.summary.writer === "model" ? "Worded by the language model from computed facts." : "Written from computed facts by a fixed template.")
     + (B.summary.removed.length ? ` <span class="removed">${B.summary.removed.length} sentence(s) removed: no source.</span>` : "");
   $("#caveats").textContent = B.pathway.caveats.join(" ");
-  drawNational(); drawChannel(); drawGoal3(); drawMirror(); drawChart(); drawAction(); drawSim(); drawMissing(); drawSources();
+  drawTimeline(); drawPilot(); drawEquity(); drawNational(); drawChannel(); drawGoal3(); drawMirror(); drawChart(); drawAction(); drawSim(); drawMissing(); drawSources();
 }
 
 // The care pathway as a line with four stops. The marked stops are the ones the question is about.
@@ -442,14 +468,59 @@ function drawRoute() {
 function drawHeadlines() {
   const h = HL, sc = h.screening, nd = h.nordic;
   $("#headlines").innerHTML = `
-    <div class="hl-card"><div class="k">Referral</div><div class="n">2× longer</div>
-      Diagnosis took twice as long through public health care in one unpublished study of lymphoma patients${cite("roadmap")}. ${h.channel.national}% of working-age doctor visits are public; ${esc(h.channel.most)} is highest at ${h.channel.most_share}%${cite("sotkanet:293")}.</div>
+    <div class="hl-card"><div class="k">Referral</div><div class="n">127 against 76 days</div>
+      Median time from first symptoms to treatment in a Finnish study of 160 lymphoma patients: first contact at a public health centre against private or occupational care${cite("kuitunen_2026")}. The public group was older. ${h.channel.national}% of working-age doctor visits are public; ${esc(h.channel.most)} is highest at ${h.channel.most_share}%${cite("sotkanet:293")}.</div>
     <div class="hl-card"><div class="k">Detection</div><div class="n">${esc(sc[0].lowest)}</div>
       Lowest attendance in the public ${esc(sc[0].cancer.toLowerCase())} screening programme (${sc[0].value}%)${cite(sc[0].source)} and ${esc(sc[1].lowest === sc[0].lowest ? "also in" : sc[1].lowest + " lowest in")} the ${esc(sc[1].cancer.toLowerCase())} programme (${sc[1].value}%)${cite(sc[1].source)}, ${sc[1].year}. ${sc.map(x => `${esc(x.cancer)} programme: ${esc(x.lowest)} was lowest in ${x.lowest_years} of ${x.n_years} published years.`).join(" ")} The figures count the public programmes only. A Finnish study found mammograms outside the programme, most among upper-level employees${cite("fuhrmann_2024")}. The strategy sets ${sc[0].target}% in every county${cite("strategy")}: ${sc[0].below_target === sc[0].n ? "no county reaches it" : sc[0].below_target + " of " + sc[0].n + " counties miss it"} for bowel screening.</div>
     <div class="hl-card"><div class="k">Outcome</div><div class="n">${nd[0].gap} points</div>
       Five-year survival for ${esc(nd[0].label.toLowerCase())} in Finland against the Nordic level. ${nd.slice(1).map(b => `${esc(b.label)} ${b.gap}`).join(", ")}${cite("nordcan")}.</div>
     <div class="hl-card"><div class="k">Data gap</div><div class="n">${h.mirror.regions} vs 0</div>
       Sweden reports treatment within target time for all ${h.mirror.regions} regions (${h.mirror.sweden}% in 2025)${cite("rcc_svf_2025")}. Finland reports it for none of its ${h.mirror.finland_counties} counties.</div>`;
+}
+
+// The lymphoma study, step by step. One bar per route on the same scale of days.
+const OWNER_CLASS = { patient: "patient", "primary care": "primary", hospital: "hospital" };
+function drawTimeline() {
+  const t = EV.timeline, o = t.by_owner, max = t.total.public;
+  const bar = k => t.steps.map(s => { const d = s[k + "_days"];
+    return `<div class="sg ${OWNER_CLASS[s.owner]}" style="flex:${Math.max(d, 0.1)} 1 0" title="${esc(s.name)}: ${d} days">${d >= 14 ? d : ""}</div>`; }).join("");
+  const row = k => `<div class="who">${esc(t.groups[k].label)}<small>${t.groups[k].patients} patients</small></div>
+    <div><div class="bar2" style="width:${t.total[k] / max * 100}%">${bar(k)}</div></div>
+    <div class="tot">${t.total[k]}<small>days</small></div>`;
+  const rows = t.steps.map(s => `<tr><td>${esc(s.name)}</td><td class="num">${s.public_days}</td><td class="num">${s.private_days}</td>
+    <td class="num extra">${s.extra > 0 ? "+" + s.extra : s.extra}</td><td>${esc(s.owner[0].toUpperCase() + s.owner.slice(1))}</td></tr>`).join("");
+  $("#timelinebody").innerHTML = `
+    <p class="lead">In one Finnish study of lymphoma patients, the route through a public health centre took ${t.total.extra} days longer than the route through private or occupational care. ${o.patient.extra} of these days passed before the first contact, ${o["primary care"].extra} in primary care, and ${o.hospital.extra} between the referral and the start of treatment.${cite(t.source)}</p>
+    <div class="tl">${row("public")}${row("private")}</div>
+    <div class="legend"><span><i class="patient"></i>Before the first contact</span><span><i class="primary"></i>Primary care: first contact to referral</span><span><i class="hospital"></i>Hospital: referral to start of treatment</span></div>
+    <div class="tablewrap"><table class="g3" style="margin-top:16px"><thead><tr><th>Step</th><th>Public health centre, days</th><th>Private or occupational, days</th><th>Extra days, public</th><th>Who owns the step</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <p class="caveat">${esc(EV.timeline.outcome.text)}${cite(EV.timeline.outcome.source)}</p>
+    <p class="caveat">Limits: one lymphoma type and 160 patients. The public group was older. The patients gave the date of the first symptoms themselves. The paper tests the whole interval only (p = ${t.p_value_total}), not each step. Its medians for the whole interval are ${t.groups.public.median_total} and ${t.groups.private.median_total} days. The days above are from figure 1 of the paper, and the app computes the length of each step from them. So the picture shows where the days add up in this study. It does not show the cause, and it does not describe other cancers or ${esc(B.county.name)}.</p>`;
+}
+
+// What the tool computes after a county connects its own records. The demo uses public data only.
+function drawPilot() {
+  const p = EV.pilot, t = EV.timeline;
+  const rows = t.steps.map((s, i) => `<li><span class="line none">${i + 1}</span><div>${esc(s.name)}<small>${esc(s.record)} In the lymphoma study: ${s.public_days} days through a public health centre, ${s.private_days} through private or occupational care.</small></div></li>`).join("");
+  $("#pilotbody").innerHTML = `
+    <p class="lead">No public source gives these five intervals for any county. A county holds most of the dates in its own records. ${esc(p.basis)}${cite(p.basis_source)}</p>
+    <ul class="rows">${rows}</ul>
+    <p class="target">${esc(p.output)}</p>
+    <p class="caveat">${esc(p.legal)} The records named above are our reading of the registers, and the county confirms the fields. ${esc(p.host)}${cite(p.host_source)} The study values come from one lymphoma study${cite(t.source)}.</p>`;
+}
+
+function drawEquity() {
+  const e = EV.equity, st = e.study, r = e.route;
+  const ci = v => `${v[0].toFixed(2)} to ${v[1].toFixed(2)}`;
+  const rows = st.rows.map(x => `<tr><td>${esc(x.step)}</td><td>${esc(x.what)}</td>
+    <td class="num"><b>+${x.men_more}%</b> <span style="color:var(--muted)">(${x.men.toFixed(2)}, ${ci(x.men_ci)})</span></td>
+    <td class="num"><b>+${x.women_more}%</b> <span style="color:var(--muted)">(${x.women.toFixed(2)}, ${ci(x.women_ci)})</span></td></tr>`).join("");
+  $("#equitybody").innerHTML = `
+    <p class="lead">Patients with lower education are behind at each step of the pathway. A register study of ${st.patients.toLocaleString("en")} Finnish patients, diagnosed in ${esc(st.period)}, compared them with patients with higher education.${cite(st.source)}</p>
+    <div class="tablewrap"><table class="g3"><thead><tr><th>Step</th><th>Lower against higher education</th><th>Men</th><th>Women</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <p class="target">${esc(st.treatment)}${cite(st.source)}</p>
+    <p class="caveat">Income also goes with the route into care. In the lymphoma study, ${r.high_income_private}% of the patients who started in private or occupational care earned more than 5000 euros a month, against ${r.high_income_public}% of the patients who started at a public health centre. ${r.low_income_public}% of the public group earned less than 1500 euros, against ${r.low_income_private}%.${cite(r.source)}</p>
+    <p class="caveat">${esc(e.missing)} In the table, the brackets hold the ratio and its 95% interval.</p>`;
 }
 
 function drawChannel() {
@@ -562,13 +633,14 @@ function drawAction() {
     ${first.nordic ? `<div class="meta" style="margin-top:8px">Nordic model: ${esc(first.nordic)}</div>` : ""}
     ${first.priority ? `<div class="meta" style="margin-top:8px">Counties with significantly more ${esc(B.cancer.label.toLowerCase())} deaths than their age structure predicts: ${first.priority.map(p => `${esc(p.county)} (SMR ${p.smr})`).join(", ")}${cite(first.priority_source)}</div>` : ""}
     <dl>
-      <dt>First step</dt><dd>${esc(first.first_step)}${cite("roadmap")}</dd>
+      <dt>Start locally</dt><dd>${esc(first.local.text)}${cite("local_step")}${first.local.evidence ? ` ${esc(first.local.evidence)}${cite(first.local.evidence_source)}` : ""} This step is our proposal for one health centre or one county. It is not roadmap text.</dd>
+      <dt>Roadmap step</dt><dd>${esc(first.first_step)}${cite("roadmap")}</dd>
       <dt>Success is</dt><dd>${esc(first.success)}${cite(first.success_source)}</dd>
       <dt>Who acts</dt><dd>${esc(first.actor)}</dd>
       <dt>Why here</dt><dd>${esc(first.why)}${first.evidence.map(id => cite(B.facts[id].source)).filter((v, i, a) => a.indexOf(v) === i).join("")}</dd>
     </dl>`;
   $("#morewrap").style.display = rest.length ? "" : "none";
-  $("#more").innerHTML = rest.map(r => `<li><span class="line">${esc(r.measure)}</span><div>${esc(r.action)}${cite("roadmap")}<small>${LEVEL[r.level]}. Roadmap ${page(r)}. Who acts: ${esc(r.actor)}. Success is: ${esc(r.success[0].toLowerCase() + r.success.slice(1))}${cite(r.success_source)}</small></div></li>`).join("");
+  $("#more").innerHTML = rest.map(r => `<li><span class="line">${esc(r.measure)}</span><div>${esc(r.action)}${cite("roadmap")}<small>${LEVEL[r.level]}. Roadmap ${page(r)}. Who acts: ${esc(r.actor)}. Success is: ${esc(r.success[0].toLowerCase() + r.success.slice(1))}${cite(r.success_source)} Start locally: ${esc(r.local.text)}${cite("local_step")}</small></div></li>`).join("");
 }
 
 function drawSmrChart() {

@@ -23,6 +23,7 @@ from .indicators import CANCERS, NATIONAL, has_county_survival
 from .priorities import ranking
 from .mortality import GOAL3, LABELS, all_years, shared as shared_mortality
 from .recommend import MEASURES, recommend
+from . import equity, timeline
 
 ROOT = Path(__file__).resolve().parent.parent
 WEB = ROOT / "web"
@@ -145,6 +146,13 @@ def headlines():
         "mirror": {"sweden": svf["national"]["2025"]["share"], "target": svf["target"],
                    "regions": len(svf["regions"]), "finland_counties": len(data.counties)},
     }
+
+
+@app.get("/api/evidence")
+def evidence():
+    """National evidence that does not depend on the county: the step timeline of the lymphoma study,
+    what a county pilot measures with it, and the register study on income and education."""
+    return {"timeline": timeline.build() | {"outcome": timeline.OUTCOME}, "pilot": timeline.PILOT, "equity": equity.build()}
 
 
 @app.get("/api/national/{cancer}")
@@ -274,6 +282,10 @@ def _missing(cancer: str, cases: dict) -> list[dict]:
                 "use was lower in most countries with data. The app has no treatment data, so it cannot tell which "
                 "treatment a survival gap concerns.",
          "measure": "3.2.1", "source": "borras_2015"},
+        {"what": "Survival, stage and waiting times by income and education, per county",
+         "why": "A register study of Finnish patients found more late-stage disease, less treatment and more deaths "
+                "among patients with lower education. The values are national. No public source gives them for a county.",
+         "measure": None, "source": "zai_2025"},
         {"what": "Stage at diagnosis per county",
          "why": "Stage would tell the steps apart: many late stages point to detection, and low survival within a stage points to treatment.",
          "measure": "3.2.1", "source": "cancer_registry"},
