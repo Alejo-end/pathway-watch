@@ -17,8 +17,8 @@ import os
 import re
 
 from . import nordcan
-from .analysis import Pathway, gap
-from .facts import Fact, gap_phrase, side_phrase
+from .analysis import ATTENDANCE, Pathway, gap, survival_interval
+from .facts import Fact, gap_phrase, interval_words, side_phrase
 from .indicators import CANCERS, has_county_survival
 from .mortality import shared as shared_mortality
 from .sotkanet import CountyData
@@ -120,20 +120,27 @@ def _county_sentences(data: CountyData, cancer: str, county: str, pathway: Pathw
     out = []
     if sg.year is not None:
         y = sg.year
+        iv = survival_interval(data, cancer, county)
+        rough = f" Our rough 95% interval for the gap is {interval_words(iv)}." if iv else ""
         out.append({
             "text": f"In {name}, five-year survival for {label} was {sg.county_value:g}% in {y}, against "
-                    f"{sg.national_value:g}% for Finland: {gap_phrase(sg)}. It was {side_phrase(sg)} in "
+                    f"{sg.national_value:g}% for Finland: {gap_phrase(sg)}.{rough} It was {side_phrase(sg)} in "
                     f"{sg.years_same_side} of {len(sg.years)} published years ({sg.years[0]} to {sg.years[-1]}).",
-            "fact_ids": [f"{s_ind}.county.{y}", f"{s_ind}.national.{y}", f"{s_ind}.gap"],
+            "fact_ids": [f"{s_ind}.county.{y}", f"{s_ind}.national.{y}", f"{s_ind}.gap"] + ([f"{s_ind}.interval"] if iv else []),
         })
-    if pathway.step in ("detection", "later", "watch") and cg.year is not None:
+    if pathway.step == "any":
+        # The step is open, and attendance in a programme this new explains nothing about survival.
+        out.append({"text": "The data cannot tell which step of the pathway the gap comes from: "
+                            f"{pathway.label[0].lower() + pathway.label[1:]}.", "fact_ids": ["pathway"]})
+    elif pathway.step in ("detection", "later", "watch") and cg.year is not None:
         y = cg.year
         att = f"{cg.county_value:g}% against {cg.national_value:g}% for Finland in {y}"
+        start = ATTENDANCE[0].upper() + ATTENDANCE[1:]
         text = {
-            "detection": f"Screening attendance is also {side_phrase(cg)} ({att}), which raises a question about detection.",
-            "later": f"Screening attendance is {side_phrase(cg)} ({att}), which raises a question about the steps "
+            "detection": f"{start} is also {side_phrase(cg)} ({att}), which raises a question about detection.",
+            "later": f"{start} is {side_phrase(cg)} ({att}), which raises a question about the steps "
                      f"after detection: {pathway.label[0].lower() + pathway.label[1:]}.",
-            "watch": f"Screening attendance is {side_phrase(cg)} ({att}), which is an early warning and raises "
+            "watch": f"{start} is {side_phrase(cg)} ({att}), which is an early warning and raises "
                      "a question about detection.",
         }[pathway.step]
         out.append({"text": text, "fact_ids": [f"{c_ind}.county.{y}", f"{c_ind}.national.{y}", "pathway"]})

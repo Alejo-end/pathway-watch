@@ -56,8 +56,10 @@ def meta():
 
 
 # The three map layers share one shape per county: name, latest, year, gap, direction.
-# `direction` is below (worse than Finland), above or near. The Sotkanet layer adds
-# `persistence`, and the mortality layer adds `confidence` from its 95% interval.
+# `direction` is below (worse than Finland), above or near. A Sotkanet layer adds `persistence`,
+# a survival layer also adds our rough `interval`, and the mortality layer adds `confidence`
+# from its 95% interval.
+SURVIVAL_OF = {spec["survival"]: key for key, spec in CANCERS.items() if spec["survival"]}
 
 @app.get("/api/map/{indicator}")
 def map_layer(indicator: int):
@@ -76,6 +78,9 @@ def map_layer(indicator: int):
             "years_same_side": g.years_same_side,
             "n_years": len(g.years),
         }
+        iv = A.survival_interval(data, SURVIVAL_OF[indicator], c) if indicator in SURVIVAL_OF else None
+        if iv:
+            out[c]["interval"] = asdict(iv)
     return {"indicator": indicator, "source": f"sotkanet:{indicator}", "counties": out}
 
 
@@ -162,9 +167,7 @@ def county_briefing(county: str, cancer: str = "bowel"):
 @lru_cache(maxsize=256)
 def _briefing(cancer: str, county: str) -> dict:
     benchmark = nordcan.benchmark(nc, cancer)
-    finland = nordcan.combined(nc, cancer, "finland")
-    cases = A.estimated_cases(data, county, finland["cases"] if finland else None,
-                              f"NORDCAN, average {nc['period']}", "nordcan")
+    cases = A.county_cases(data, cancer, county)
     pathway = A.locate(data, cancer, county)
     recs = recommend(data, pathway, county)
     if pathway.step == "national":
@@ -193,8 +196,10 @@ def _county_survival_view(cancer: str, county: str, cases: dict) -> dict:
     ind = CANCERS[cancer]["survival"]
     g = A.gap(data, ind, county)
     own, nat = g.county_value, g.national_value
+    iv = A.survival_interval(data, cancer, county)
     return {
-        "chart": {"kind": "survival", "source": f"sotkanet:{ind}",
+        "chart": {"kind": "survival", "source": f"sotkanet:{ind}", "year": g.year, "gap": g.gap,
+                  "interval": asdict(iv) if iv else None, "years_same_side": g.years_same_side, "n_years": len(g.years),
                   "county": data.series(ind, county), "national": data.series(ind, NATIONAL)},
         "simulation": {"mode": "county", "cases": cases, "start": own, "goal": nat,
                        "period": g.year, "source": f"sotkanet:{ind}", "target": None,
@@ -258,7 +263,7 @@ def _missing(cancer: str, cases: dict) -> list[dict]:
          "why": "Goal 3 indicator 3 asks for treatment within target times. No public source gives them per county.",
          "measure": "3.1.4", "source": "thl_21_2016"},
         {"what": "Stage at diagnosis per county",
-         "why": "Stage would show whether detection or later steps cause the gap.",
+         "why": "Stage would tell the steps apart: many late stages point to detection, and low survival within a stage points to treatment.",
          "measure": "3.2.1", "source": "cancer_registry"},
         {"what": "Five-year survival for lung, pancreatic and liver cancer per county",
          "why": "Goal 3 indicator 1 measures survival for these cancers. The app shows their age-adjusted mortality instead.",

@@ -294,7 +294,7 @@ async function drawNational() {
   }).join("");
   $("#nationalbody").innerHTML = `
     <p class="lead">${n.registers > 1
-      ? `${n.rows.length} of ${n.counties} counties are behind Finland in at least one register${[...srcs].map(cite).join("")}. Survival or screening counts when the county is below Finland now and in most published years. Deaths count when the 95% interval is above 100. Counties behind in more than one register come first.`
+      ? `${n.rows.length} of ${n.counties} counties are behind Finland in at least one register${[...srcs].map(cite).join("")}. Survival counts when the county is below Finland now and our rough 95% interval of the gap excludes zero${cite("survival_interval")}. Attendance in the public screening programme counts when the county is below Finland now and in most published years. Deaths count when the 95% interval is above 100. Counties behind in more than one register come first.`
       : `${n.rows.length} of ${n.counties} counties have more deaths than their age structure predicts, with a 95% interval above 100${[...srcs].map(cite).join("")}. Deaths are the only county register for this cancer.`} The badge is each county's first action.</p>
     <p class="caveat" style="margin:0 0 10px">${groups}</p>
     <ul class="rank">${rows}</ul>
@@ -333,6 +333,7 @@ function project(features, W, H) {
     const [x, y] = pt(c); return ((x - minX) * s).toFixed(1) + "," + ((y - minY) * s).toFixed(1);
   }).join("L") + "Z").join("")).join("") };
 }
+const signed = v => (v > 0 ? "+" : "") + v;
 function colorFor(d, strongAt = 3) {
   if (!d || d.gap == null) return "var(--nodata)";
   if (d.direction === "near") return "var(--near)";
@@ -351,8 +352,10 @@ async function drawMap() {
   $("#mapsvg").innerHTML = `<svg viewBox="0 0 ${P.w.toFixed(0)} ${P.h.toFixed(0)}" role="img" aria-label="Map of counties">${
     feats.map(f => {
       const c = f.properties.hyvinvointialue, d = layer.counties[c];
-      // Dashed: the county is not on the same side in most years (Sotkanet), or the 95% interval includes 100 (deaths).
-      const weak = d.persistence ? d.persistence !== "persistent" : d.confidence != null && d.confidence !== "high";
+      // Dashed: our rough interval of the survival gap includes zero, the county is not on the same side in
+      // most years (attendance), or the 95% interval includes 100 (deaths).
+      const weak = d.interval ? !d.interval.excludes_zero
+        : d.persistence ? d.persistence !== "persistent" : d.confidence != null && d.confidence !== "high";
       return `<path d="${P.path(f)}" data-c="${c}" fill="${colorFor(d, mortality ? 10 : 3)}" class="${c === state.county ? "sel" : ""} ${weak ? "low" : ""}"></path>`;
     }).join("")}</svg>`;
   const sel = $(`#mapsvg path[data-c="${state.county}"]`); if (sel) sel.parentNode.appendChild(sel);
@@ -367,7 +370,9 @@ async function drawMap() {
         : mortality
         ? `<b>${esc(d.name)}</b><br>SMR ${d.latest} in ${d.year}<br>95% interval ${d.low} to ${d.high}<br>${d.confidence === "high" ? "significant: the interval excludes 100" : "not significant: the interval includes 100"}`
         : d.gap == null ? `<b>${esc(d.name)}</b><br>no data`
-        : `<b>${esc(d.name)}</b><br>${d.latest}% in ${d.year}<br>${(d.gap > 0 ? "+" : "") + d.gap} points against Finland in ${d.year}<br>same side in ${d.years_same_side} of ${d.n_years} years`;
+        : `<b>${esc(d.name)}</b><br>${d.latest}% in ${d.year}<br>${signed(d.gap)} points against Finland in ${d.year}`
+          + (d.interval ? `<br>our rough 95% interval: ${signed(d.interval.low)} to ${signed(d.interval.high)} points` : "")
+          + `<br>same side in ${d.years_same_side} of ${d.n_years} years`;
     };
     p.onmouseleave = () => tip.style.display = "none";
   });
@@ -386,12 +391,14 @@ async function drawMap() {
       <span style="flex-basis:100%">${esc(layer.label)} deaths against the number expected from the county's age structure (SMR), ${esc(Object.values(layer.counties)[0].year)}. Data: Statistics Finland.</span>`;
     return;
   }
-  const what = state.layer === "survival" ? "five-year survival" : "screening attendance";
+  const survival = state.layer === "survival";
   $("#legend").innerHTML = `
     <span><i style="background:var(--below)"></i>3+ points below</span><span><i style="background:var(--below-soft)"></i>1–3 below</span>
     <span><i style="background:var(--near)"></i>near Finland</span><span><i style="background:var(--above-soft)"></i>1–3 above</span>
-    <span><i style="background:var(--above)"></i>3+ above</span><span><i style="border:1px dashed var(--muted)"></i>not on the same side in most years</span>
-    <span style="flex-basis:100%">County ${what} against Finland in the latest year. No confidence interval is published. Map: Statistics Finland. Data: THL Sotkanet ${ind}.</span>`;
+    <span><i style="background:var(--above)"></i>3+ above</span><span><i style="border:1px dashed var(--muted)"></i>${survival ? "our rough 95% interval includes zero" : "not on the same side in most years"}</span>
+    <span style="flex-basis:100%">${survival
+      ? "County five-year survival against Finland in the latest year. Sotkanet publishes no interval. The dashed outline uses our rough estimate from patient counts."
+      : "County attendance in the public screening programme against Finland in the latest year. A test in occupational or private care is not counted."} Map: Statistics Finland. Data: THL Sotkanet ${ind}.</span>`;
 }
 
 // ---------- briefing ----------
@@ -418,16 +425,18 @@ async function drawBriefing() {
 
 // The care pathway as a line with four stops. The marked stops are the ones the question is about.
 const STOPS = ["Detection", "Referral", "Diagnosis", "Treatment"];
-const MARKED = { detection: [0], watch: [0], later: [1, 2, 3], national: [0, 2], none: [], unknown: [] };
-// How the gap behind the question has behaved over the published years. A description, not a test.
-const EVIDENCE = { persistent: "seen in most years", mixed: "years disagree", short: "few years of data", national: "national evidence" };
+const MARKED = { detection: [0], watch: [0], later: [1, 2, 3], any: [0, 1, 2, 3], national: [0, 2], none: [], unknown: [] };
+// What stands behind the question. For a survival gap: our rough 95% interval from patient counts, not a published one.
+// For attendance: how the gap has behaved over the published years, a description and not a test.
+const EVIDENCE = { interval_excludes_zero: "rough interval excludes zero", interval_includes_zero: "rough interval includes zero",
+  persistent: "seen in most years", mixed: "years disagree", short: "few years of data", national: "national evidence" };
 function drawRoute() {
   const p = B.pathway, marked = MARKED[p.step] || [];
   const cls = p.step === "watch" ? "warn" : "hit";
   $("#route").innerHTML = STOPS.map((name, i) => `<div class="stop ${marked.includes(i) ? cls : ""} ${cls === "hit" && marked.includes(i) && marked.includes(i + 1) ? "seg" : ""}">${name}</div>`).join("");
   const lead = { none: "No survival gap found.", unknown: "Not enough data to ask a pathway question.", watch: "Early warning. Question to investigate:" }[p.step] || "Question to investigate:";
   const where = ["none", "unknown"].includes(p.step) ? "" : ` <b>${esc(p.label[0].toLowerCase() + p.label.slice(1))}</b>.`;
-  $("#verdict").innerHTML = `${lead}${where} <span class="badge ${p.evidence === "persistent" ? "high" : ""}">${EVIDENCE[p.evidence] || esc(p.evidence)}</span>`;
+  $("#verdict").innerHTML = `${lead}${where} <span class="badge ${["persistent", "interval_excludes_zero"].includes(p.evidence) ? "high" : ""}">${EVIDENCE[p.evidence] || esc(p.evidence)}</span>`;
 }
 
 function drawHeadlines() {
@@ -436,7 +445,7 @@ function drawHeadlines() {
     <div class="hl-card"><div class="k">Referral</div><div class="n">2× longer</div>
       Diagnosis took twice as long through public health care in one unpublished study of lymphoma patients${cite("roadmap")}. ${h.channel.national}% of working-age doctor visits are public; ${esc(h.channel.most)} is highest at ${h.channel.most_share}%${cite("sotkanet:293")}.</div>
     <div class="hl-card"><div class="k">Detection</div><div class="n">${esc(sc[0].lowest)}</div>
-      Lowest attendance in ${esc(sc[0].cancer.toLowerCase())} screening (${sc[0].value}%)${cite(sc[0].source)} and ${esc(sc[1].lowest === sc[0].lowest ? "also in" : sc[1].lowest + " lowest in")} ${esc(sc[1].cancer.toLowerCase())} screening (${sc[1].value}%)${cite(sc[1].source)}, ${sc[1].year}. ${sc.map(x => `${esc(x.cancer)} screening: ${esc(x.lowest)} was lowest in ${x.lowest_years} of ${x.n_years} published years.`).join(" ")} The strategy sets ${sc[0].target}% in every county${cite("strategy")}: ${sc[0].below_target === sc[0].n ? "no county reaches it" : sc[0].below_target + " of " + sc[0].n + " counties miss it"} for bowel screening.</div>
+      Lowest attendance in the public ${esc(sc[0].cancer.toLowerCase())} screening programme (${sc[0].value}%)${cite(sc[0].source)} and ${esc(sc[1].lowest === sc[0].lowest ? "also in" : sc[1].lowest + " lowest in")} the ${esc(sc[1].cancer.toLowerCase())} programme (${sc[1].value}%)${cite(sc[1].source)}, ${sc[1].year}. ${sc.map(x => `${esc(x.cancer)} programme: ${esc(x.lowest)} was lowest in ${x.lowest_years} of ${x.n_years} published years.`).join(" ")} The figures count the public programmes only. A Finnish study found mammograms outside the programme, most among upper-level employees${cite("fuhrmann_2024")}. The strategy sets ${sc[0].target}% in every county${cite("strategy")}: ${sc[0].below_target === sc[0].n ? "no county reaches it" : sc[0].below_target + " of " + sc[0].n + " counties miss it"} for bowel screening.</div>
     <div class="hl-card"><div class="k">Outcome</div><div class="n">${nd[0].gap} points</div>
       Five-year survival for ${esc(nd[0].label.toLowerCase())} in Finland against the Nordic level. ${nd.slice(1).map(b => `${esc(b.label)} ${b.gap}`).join(", ")}${cite("nordcan")}.</div>
     <div class="hl-card"><div class="k">Data gap</div><div class="n">${h.mirror.regions} vs 0</div>
@@ -526,8 +535,10 @@ function drawChart() {
   svg += line(national, "var(--muted)") + line(c.county, "var(--accent)") + "</svg>";
   $("#chartsvg").innerHTML = svg;
   $("#charttitle").innerHTML = `Five-year survival, ${esc(B.cancer.label.toLowerCase())}${cite(c.source)}`;
+  const iv = c.interval;
+  const rough = iv ? `<span style="flex-basis:100%">Gap in ${c.year}: ${signed(c.gap)} points. Our rough 95% interval: ${signed(iv.low)} to ${signed(iv.high)} points, from about ${iv.patients} patients${cite("survival_interval")}. It is not a published interval, and the true interval is wider. ${esc(B.county.name)} was on the same side of Finland in ${c.years_same_side} of ${c.n_years} published years. That count is a description, not a test.</span>` : "";
   $("#chartlegend").innerHTML = `<span><i style="background:var(--accent)"></i>${esc(B.county.name)}</span><span><i style="background:var(--muted)"></i>Finland</span>` +
-    `<span style="flex-basis:100%">${nordicLine(B.nordic)}</span>`;
+    rough + `<span style="flex-basis:100%">${nordicLine(B.nordic)}</span>`;
 }
 
 function nordicLine(b) {
@@ -547,6 +558,7 @@ function drawAction() {
     <div class="meta"><span class="line">${esc(first.measure)}</span>&nbsp; Roadmap measure, ${page(first)}${cite("roadmap")}. <span class="level">${LEVEL[first.level]}.</span></div>
     <div class="what">${esc(first.action)}</div>
     ${first.detail ? `<div class="detail">${esc(first.detail)}</div>` : ""}
+    ${first.note ? `<div class="detail">${esc(first.note)}${first.note_sources.map(cite).join("")} This note is our reading of the studies, not roadmap text.</div>` : ""}
     ${first.nordic ? `<div class="meta" style="margin-top:8px">Nordic model: ${esc(first.nordic)}</div>` : ""}
     ${first.priority ? `<div class="meta" style="margin-top:8px">Counties with significantly more ${esc(B.cancer.label.toLowerCase())} deaths than their age structure predicts: ${first.priority.map(p => `${esc(p.county)} (SMR ${p.smr})`).join(", ")}${cite(first.priority_source)}</div>` : ""}
     <dl>

@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .analysis import Gap, Pathway, gap, rank
+from .analysis import Gap, Interval, Pathway, gap, rank, survival_interval
 from .channel import channel_table
-from .indicators import CANCERS, SOTKANET, has_county_survival
+from .indicators import CANCERS, SOTKANET, SURVIVAL_WINDOW_YEARS, has_county_survival
 from .mortality import GOAL3, LABELS, Mortality
 from .sotkanet import CountyData
 
@@ -39,13 +39,36 @@ def survival_and_screening_facts(data: CountyData, cancer: str, county: str) -> 
         out.append(Fact(
             f"{ind}.gap",
             f"{name}, {label}, {y}: {gap_phrase(g)}. {name} was {side_phrase(g)} in {g.years_same_side} of "
-            f"{len(g.years)} published years ({g.years[0]} to {g.years[-1]}). No confidence interval is published",
+            f"{len(g.years)} published years ({g.years[0]} to {g.years[-1]}). The count of years describes, it is not "
+            "a test. No confidence interval is published",
             g.gap, "points", src,
         ))
+        iv = survival_interval(data, cancer, county) if key == "survival" else None
+        if iv:
+            out.append(Fact(
+                f"{ind}.interval",
+                f"{name}, {label}, {y}: a rough 95% interval for the gap is {interval_words(iv)}. It is our estimate "
+                f"from about {iv.patients} patients ({iv.cases_per_year} estimated new cases per year times "
+                f"{SURVIVAL_WINDOW_YEARS} diagnosis years, standard error {iv.se:g} points with the rounding of the "
+                "published values). It is not a published interval, and the true interval is wider",
+                iv.se, "points", "survival_interval",
+            ))
         r, n = rank(data, ind, county)
         if r:
-            out.append(Fact(f"{ind}.rank", f"{name} ranks {r} of {n} counties on {label} in {y} (1 = lowest)", r, "rank", src))
+            lowest = (f". The lowest of {n} counties tends to look less extreme the next time it is measured, "
+                      "so the interval matters more than the rank") if r == 1 and key == "survival" else ""
+            out.append(Fact(f"{ind}.rank", f"{name} ranks {r} of {n} counties on {label} in {y} (1 = lowest){lowest}",
+                            r, "rank", src))
     return out
+
+
+def interval_words(iv: Interval) -> str:
+    """The rough interval in words: '6.4 to 1.6 points below the national value'."""
+    if iv.high < 0:
+        return f"{abs(iv.low):g} to {abs(iv.high):g} points below the national value"
+    if iv.low > 0:
+        return f"{iv.low:g} to {iv.high:g} points above the national value"
+    return f"from {abs(iv.low):g} points below to {iv.high:g} points above the national value"
 
 
 def gap_phrase(g: Gap) -> str:
@@ -139,10 +162,20 @@ def channel_facts(data: CountyData, county: str) -> list[Fact]:
     ]
 
 
+EVIDENCE = {
+    "interval_excludes_zero": "the rough interval of the survival gap excludes zero",
+    "interval_includes_zero": "the rough interval of the survival gap includes zero",
+    "persistent": "seen in most published years",
+    "mixed": "the published years disagree",
+    "short": "few years of data",
+    "national": "national evidence",
+}
+
+
 def pathway_and_action_facts(pathway: Pathway, recs: list[dict]) -> list[Fact]:
     """The pathway step to ask about and the first recommended roadmap measure."""
-    out = [Fact("pathway", f"Question to investigate: {pathway.label} (evidence: {pathway.evidence}). {pathway.reason}",
-                None, "", "pathway_rule")]
+    out = [Fact("pathway", f"Question to investigate: {pathway.label} (evidence: {EVIDENCE[pathway.evidence]}). "
+                f"{pathway.reason}", None, "", "pathway_rule")]
     if recs:
         r = recs[0]
         out.append(Fact(f"measure.{r['measure']}", f"Roadmap measure {r['measure']}: {r['action']}", None, "", "roadmap"))

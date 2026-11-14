@@ -13,7 +13,7 @@ The design rule: the language model explains and drafts. Code computes every num
 Pathway Watch is our second entry, after the Safe Kitchen Agent. An originality test showed that a dashboard with an AI analyst is the obvious idea for this brief. So the pitch leads with two findings that a model cannot give other teams, because they come from Finnish sources and live data:
 
 1. Diagnosis takes twice as long through public care. The roadmap cites an unpublished lymphoma study on page 11.
-2. Helsinki has the lowest breast screening attendance of all counties in every published year, 2015 to 2024 (Sotkanet). The three lowest areas are all in Uusimaa in each of those years.
+2. Helsinki has the lowest attendance in the public breast screening programme in every published year, 2015 to 2024 (Sotkanet). The three lowest areas are all in Uusimaa in each of those years.
 3. Satakunta has the lowest bowel cancer survival in every year from 2019 to 2023 (Sotkanet).
 
 The first finding is one unpublished study of lymphoma patients, and the pitch says so.
@@ -40,6 +40,11 @@ We read the Sotkanet indicator definitions and six years of data. Four earlier s
 7. The rule "low survival with normal screening points to referral or treatment" compares whole counties, not patients. Call the result "a question to investigate", never a located cause.
 8. Update of 14 November, 02:30: the code now follows items 1, 3, 4, 6 and 7. It shows the gap of the latest year and the number of years on the same side. It no longer averages years, and it no longer says "confidence" for Sotkanet values. A gap of one point counts as "near", because Sotkanet rounds survival to whole percent.
 9. The first action for low screening was outreach to language groups. That assumed the cause. The first action is now to find who does not attend (measure 2.4.5).
+10. Update of 14 November, afternoon: three more assumptions were wrong, and the code now follows the items below.
+11. Bowel cancer: national screening started in 2022, and each survival value covers ten years of diagnoses. The rule no longer uses attendance for a bowel survival gap. The app says that the data cannot tell which step the gap comes from.
+12. Evidence: the count of years on the same side is a description only. The app now computes a rough 95% interval from patient counts. For Satakunta in 2024, the gap is 4 points and the interval is 6.5 to 1.5 points below Finland. The interval is our estimate, and the true interval is wider.
+13. Attendance: the Sotkanet figure counts the public programme only. A Finnish Cancer Registry study found mammograms outside the programme, most among upper-level employees (Fuhrmann and others, Acta Oncologica 2024). For breast cancer, the first action is now to find who has no mammogram at all.
+14. The lowest of 22 counties tends to look less extreme the next time it is measured. The page says so for the lowest county.
 
 ## What AstraZeneca asks
 
@@ -155,9 +160,9 @@ No public source that we found gives waiting times per county. That missing data
 
 For each county and indicator, compute the difference from the national value. Do not average years to reduce noise, because the yearly values share most of their patients. Show a "how sure are we" marker:
 
-1. Published: the Cancer Registry gives a confidence interval, and the app shows it.
-2. Persistent: the county is on the same side of the national value in most years from 2019 to 2024. The years overlap, so this is weak evidence.
-3. Not published: no interval is available, and the app says so.
+1. Published: the Cancer Registry gives a confidence interval, and the app shows it. We did not find one in open data.
+2. Rough interval: for survival, the app computes a 95% interval from the estimated number of patients. The page labels it as our estimate.
+3. Persistent: for attendance, the county is on the same side of the national value in most published years. This is a description, not a test.
 
 ### Step 2: locate the gap in the pathway
 
@@ -170,9 +175,9 @@ Use the indicators that belong to each pathway step:
 | Diagnosis | Stage at diagnosis, where it exists |
 | Start of treatment | No public regional waiting times. Survival differences with normal screening point here |
 
-A simple rule for the demo: low survival with low screening raises a question about detection. Low survival with normal screening raises a question about referral, diagnosis or treatment. The rule compares counties, not patients. The app calls the result "a question to investigate" and never claims a cause.
+A simple rule for the demo: low survival with low attendance in the public screening programme raises a question about detection. Low survival with normal attendance raises a question about referral, diagnosis or treatment. The rule compares counties, not patients. The app calls the result "a question to investigate" and never claims a cause.
 
-Be careful with timing. Colorectal screening started nationally in 2022, and the five-year survival figures describe patients diagnosed years earlier. Do not claim that screening explains survival in the same year.
+The rule does not apply to bowel cancer. Colorectal screening started nationally in 2022, and the five-year survival figures describe patients diagnosed years earlier. For a bowel cancer survival gap, the app says that the data cannot tell which step. Stage at diagnosis per county is the data that tells the steps apart.
 
 ### Step 3: recommend
 
@@ -194,7 +199,7 @@ data/fetch_sotkanet.py  -> data/raw/*.json      (open API, no key)
 data/fetch_statfin.py   -> data/raw/statfin_mortality.json (open API, no key)
 data/nordcan.json       -> NORDCAN values, copied by hand from the fact sheets
 data/svf_sweden.json    -> Sweden's waiting times, copied by hand from the RCC report
-backend/analysis.py     -> gaps, confidence, pathway step (plain code)
+backend/analysis.py     -> gaps, rough interval, pathway step (plain code)
 backend/recommend.py    -> gap type to roadmap measure, with citations
 backend/analyst.py      -> language model writes 3 sentences from computed facts only
 backend/app.py          -> FastAPI endpoints
@@ -230,6 +235,8 @@ Questions for the mentors:
 3. Which county is a likely host for a follow-up project? What does its decision-maker need?
 4. Which cancers are the best focus for the demo?
 5. Is our pathway rule (screening against survival) sound to a clinician?
+6. Does the Cancer Registry publish stage at diagnosis per wellbeing services county?
+7. How much mammography in Helsinki happens outside the public programme?
 
 ## Saturday
 

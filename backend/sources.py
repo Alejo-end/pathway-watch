@@ -36,7 +36,22 @@ STATIC_SOURCES: dict[str, dict] = {
     "pathway_rule": {
         "title": "Pathway Watch rule, computed by the app",
         "url": None,
-        "note": "Low survival with low screening raises a question about detection. Low survival with normal screening raises a question about referral, diagnosis or treatment. The rule compares counties, not patients, so the result is a question to investigate, not a cause. Code: backend/analysis.py, locate().",
+        "note": "Low survival with low attendance in the public screening programme raises a question about detection. Low survival with normal attendance raises a question about referral, diagnosis or treatment. For bowel cancer the rule does not use attendance, because national screening started in 2022, after most of the diagnoses behind the survival value. The rule compares counties, not patients, so the result is a question to investigate, not a cause. Code: backend/analysis.py, locate().",
+    },
+    "survival_interval": {
+        "title": "Rough 95% interval of a county survival gap, computed by the app",
+        "url": None,
+        "note": "Our estimate, not a published interval. Standard error of the county value = sqrt(p(1-p)/n), with n = estimated new cases per year times the ten diagnosis years behind one Sotkanet value. The rounding of both published values to whole percent is added. The true interval is wider: relative survival varies more than a plain share, the follow-up uses part of the ten years, and the county case count ignores the age structure. Code: backend/analysis.py, rough_interval().",
+    },
+    "fuhrmann_2024": {
+        "title": "Fuhrmann J, Heinävaara S, Sarkeala T, Lehtinen M, Pankakoski M. Coverage of mammography imaging in and outside an organized breast cancer screening program: variation by age and sociodemographic groups. Acta Oncologica 2024;63:833-840",
+        "url": "https://doi.org/10.2340/1651-226X.2024.40830",
+        "note": "Finnish Cancer Registry study, found through PubMed (PMID 39473178). It links mammograms and ultrasounds made outside the programme to the programme data for Finland. The numbers are national, not per county.",
+    },
+    "acharya_2021": {
+        "title": "Acharya A, Sounderajah V, Ashrafian H, Darzi A, Judah G. A systematic review of interventions to improve breast cancer screening health behaviours. Preventive Medicine 2021;153:106828",
+        "url": "https://doi.org/10.1016/j.ypmed.2021.106828",
+        "note": "Systematic review, found through PubMed (PMID 34624390). 54 studies with 80 interventions to raise attendance. Half of the interventions reported a significant effect.",
     },
     "statfin_mortality": {
         "title": "Statistics Finland, causes of death (tables 13u5 and 11az) and population by age (table 11re)",
