@@ -113,6 +113,7 @@ def test_every_fact_names_a_known_source_and_every_cited_fact_exists():
         assert all(i in b["facts"] for i in cited), (cancer, county)
         assert all(r["measure"] in MEASURES for r in b["recommendations"])
         assert all(m["source"] in sources for m in b["missing"])
+        assert b["mirror"]["delay"]["source"] in sources
         assert all(s in sources for r in b["recommendations"] for s in r["note_sources"]), (cancer, county)
 
 

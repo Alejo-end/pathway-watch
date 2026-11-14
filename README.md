@@ -58,7 +58,11 @@ The Sotkanet attendance indicators count the public screening programme only. Fo
 
 ## Lung cancer
 
-Lung cancer has no county survival data and no screening programme, so its view differs. The three sentences use county mortality (SMR) and national NORDCAN survival against the Nordic level. The pathway step comes from national evidence (roadmap, page 22). The first action is roadmap measure 2.3.4 (page 46): extend the lung cancer screening pilot, and invite first the counties with significantly more lung cancer deaths than their age structure predicts. The slider shows what reaching the Nordic level would mean for the county's yearly patients.
+Lung cancer has no county survival data and no screening programme, so its view differs. The three sentences use county mortality (SMR) and national NORDCAN survival against the Nordic level. The pathway step comes from national evidence (roadmap, page 22). The first action is roadmap measure 2.3.4 (page 46): extend the lung cancer screening pilot, and invite first the counties with significantly more lung cancer deaths than their age structure predicts. The slider shows what reaching the Nordic level would mean for the county's yearly patients. The view also cites a survey of Nordic lung cancer professionals: Khalife and others, Acta Oncologica 2025, https://doi.org/10.2340/1651-226X.2025.42778. In it, Finland had the lowest access to CT from primary care. No public source gives the wait for the tests before treatment per county: endoscopy, scan and pathology. The page lists these waits as missing data. It also lists the treatment that patients got, because the app has no data on surgery, radiotherapy or medicines.
+
+## Intended use
+
+Pathway Watch is a planning tool for a wellbeing services county. It works on county statistics and gives no advice about one patient. Under our reading of the EU guidance MDCG 2019-11, such software is not a medical device. `HANDBOOK.md` gives the reasons and the limits.
 
 ## Goal 3 coverage
 

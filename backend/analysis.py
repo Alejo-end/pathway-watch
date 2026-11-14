@@ -234,7 +234,9 @@ def _locate_from_national_evidence(cancer: str) -> Pathway:
         "cancers are often diagnosed at an advanced stage, with vague symptoms and smoking stigma delaying care "
         "(roadmap, page 22). This raises a question about detection and diagnosis in every county.",
         ["No public source gives lung cancer survival, stage or screening per county. The county view uses age-adjusted mortality.",
-         "A lung cancer screening pilot started in 2026 in Helsinki and eight counties (roadmap, page 46)."],
+         "A lung cancer screening pilot started in 2026 in Helsinki and eight counties (roadmap, page 46).",
+         "In a survey of Nordic lung cancer professionals, Finland had the lowest access to CT from primary care and "
+         "the longest waits in primary care (Khalife and others, Acta Oncologica 2025)."],
     )
 
 

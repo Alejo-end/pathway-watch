@@ -244,6 +244,8 @@ def _mirror(cancer: str) -> dict:
         "target": svf["target"], "national": svf["national"],
         "regions": regions, "cancer": svf["by_cancer_2025"].get(cancer), "source": svf["source"],
         "finland_counties": len(data.counties),
+        "delay": {"text": "The wait matters: in a review of 34 studies, each four-week delay of cancer surgery went "
+                          "with a 6% to 8% higher risk of death.", "source": "hanna_2020"},
         "proposal": [{"measure": m, **{k: MEASURES[m][k] for k in ("action", "page", "actor")}} for m in ("3.1.2", "3.1.4")],
     }
 
@@ -262,6 +264,16 @@ def _missing(cancer: str, cases: dict) -> list[dict]:
         {"what": "Waiting times from referral to diagnosis and to treatment, per county",
          "why": "Goal 3 indicator 3 asks for treatment within target times. No public source gives them per county.",
          "measure": "3.1.4", "source": "thl_21_2016"},
+        {"what": "Waiting time for each test before treatment, per county: endoscopy, scan and pathology",
+         "why": "A tissue sample shows that a growth is cancer, and a scan shows its spread. Treatment waits for both. In a survey "
+                "of Nordic lung cancer professionals, Finland had the lowest access to CT from primary care. The "
+                "roadmap indicator counts the whole wait to treatment, not the wait for each test.",
+         "measure": None, "source": "khalife_2025"},
+        {"what": "The treatment that patients got, per county: surgery, radiotherapy and medicines",
+         "why": "In a European estimate, about half of new cancer patients need radiotherapy at least once, and actual "
+                "use was lower in most countries with data. The app has no treatment data, so it cannot tell which "
+                "treatment a survival gap concerns.",
+         "measure": "3.2.1", "source": "borras_2015"},
         {"what": "Stage at diagnosis per county",
          "why": "Stage would tell the steps apart: many late stages point to detection, and low survival within a stage points to treatment.",
          "measure": "3.2.1", "source": "cancer_registry"},
