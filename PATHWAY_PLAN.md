@@ -237,6 +237,8 @@ Questions for the mentors:
 5. Is our pathway rule (screening against survival) sound to a clinician?
 6. Does the Cancer Registry publish stage at diagnosis per wellbeing services county?
 7. How much mammography in Helsinki happens outside the public programme?
+8. Does any register give the wait for each test before treatment per county: colonoscopy, scan, pathology?
+9. Is our reading right that a planning tool on county statistics is not a medical device?
 
 ## Saturday
 
@@ -252,14 +254,15 @@ Questions for the mentors:
 3. Show the chart against the national value and the Nordic level.
 4. Show the first action: standardized referral criteria (roadmap measure 2.5.2), with the Nordic models it follows.
 5. Show the Helsinki screening finding, with the possible explanations as open questions.
-6. Show the "data we are missing" box, and end on the follow-up project with a county.
+6. Show the "data we are missing" box, with the waits for the tests before treatment. End on the follow-up project with a county.
 
 ## Constraints
 
 1. Use public, aggregate data only. No patient data.
-2. Show the source for every number and claim.
-3. Do not put secrets in the repository. It becomes public under the MIT license.
-4. Final submission by Sunday 08:00. The hard deadline is 10:00. Judging starts at 14:00.
+2. Give no advice about one patient. Software that does is a medical device and needs a CE mark. `pathway-watch/HANDBOOK.md` gives our reading of the rule.
+3. Show the source for every number and claim.
+4. Do not put secrets in the repository. It becomes public under the MIT license.
+5. Final submission by Sunday 08:00. The hard deadline is 10:00. Judging starts at 14:00.
 
 ## Still unknown
 

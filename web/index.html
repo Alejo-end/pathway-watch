@@ -230,7 +230,7 @@ footer { border-top: 3px solid var(--rule); color: var(--muted); font-size: 13px
     </section>
   </div>
 </main>
-<footer>Public aggregate data only. Code computes every number, and each one links to its source. In the three summary sentences, a sentence is removed before display if it cites no fact, or if it holds a number that its facts do not.</footer>
+<footer>A planning tool for a county. It gives no advice about one patient. Public aggregate data only. Code computes every number, and each one links to its source. In the three summary sentences, a sentence is removed before display if it cites no fact, or if it holds a number that its facts do not.</footer>
 <div id="tip"></div><span id="sizer" class="query"></span>
 <script>
 const $ = s => document.querySelector(s);
@@ -479,7 +479,7 @@ function drawMirror() {
   const can = m.cancer ? ` For ${esc(B.cancer.label.toLowerCase())} (${esc(m.cancer.svf)}), ${m.cancer.share}% of ${m.cancer.n.toLocaleString("en")} Swedish patients started treatment within the lead time in 2025.${cite(m.source)}` : "";
   const prop = m.proposal.map(p => `<li><span class="line">${esc(p.measure)}</span><div>${esc(p.action)}${cite("roadmap")}<small>Roadmap page ${p.page}. Who acts: ${esc(p.actor)}.</small></div></li>`).join("");
   $("#mirrorbody").innerHTML = `
-    <p class="lead">Sweden measures, for every region, the share of patients who start treatment within the target time of their cancer pathway. In 2025 it was ${m.national["2025"].share}% nationally against a target of ${m.target}%, and ranged from ${m.regions[0]["2025"]}% in ${esc(m.regions[0].region)} to ${m.regions.at(-1)["2025"]}% in ${esc(m.regions.at(-1).region)}.${cite(m.source)}${can}</p>
+    <p class="lead">Sweden measures, for every region, the share of patients who start treatment within the target time of their cancer pathway. In 2025 it was ${m.national["2025"].share}% nationally against a target of ${m.target}%, and ranged from ${m.regions[0]["2025"]}% in ${esc(m.regions[0].region)} to ${m.regions.at(-1)["2025"]}% in ${esc(m.regions.at(-1).region)}.${cite(m.source)}${can} ${esc(m.delay.text)}${cite(m.delay.source)}</p>
     <div class="split">
       <div><h3 class="sub" style="margin-top:0">Sweden, 2025</h3><div class="bars">${rows}</div><p class="caveat">Line: the ${m.target}% target.</p></div>
       <div><h3 class="sub" style="margin-top:0">Finland, any year</h3><div class="bars">${fin}<span style="color:var(--muted)">… ${m.finland_counties - 6} more</span><span></span><span></span></div>

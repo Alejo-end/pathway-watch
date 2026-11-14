@@ -53,6 +53,21 @@ STATIC_SOURCES: dict[str, dict] = {
         "url": "https://doi.org/10.1016/j.ypmed.2021.106828",
         "note": "Systematic review, found through PubMed (PMID 34624390). 54 studies with 80 interventions to raise attendance. Half of the interventions reported a significant effect.",
     },
+    "khalife_2025": {
+        "title": "Khalife G, Waris J, Bødtger U, Isaksson J, Neumann K, Harðardóttir H, Andersén H, Jekunen A, Lovén M, Vasankari T, Nurmi-Rantala S, Torkki P. Comparative study of lung cancer care and survival outcomes across the Nordic countries. Acta Oncologica 2025;64:734-741",
+        "url": "https://doi.org/10.2340/1651-226X.2025.42778",
+        "note": "Survey of health care professionals in the Nordic countries, found through PubMed (PMID 40468524). Finland had the lowest access to CT from primary care, the longest waiting times in primary care and no national tracking of outcomes. The answers are the views of professionals, not measured waiting times. One author works for MSD Finland.",
+    },
+    "hanna_2020": {
+        "title": "Hanna TP, King WD, Thibodeau S, Jalink M, Paulin GA, Harvey-Jones E, O'Sullivan DE, Booth CM, Sullivan R, Aggarwal A. Mortality due to cancer treatment delay: systematic review and meta-analysis. BMJ 2020;371:m4087",
+        "url": "https://doi.org/10.1136/bmj.m4087",
+        "note": "Systematic review, found through PubMed (PMID 33148535). 34 studies, seven cancers. For each four-week delay of surgery the risk of death was 6% to 8% higher (hazard ratio 1.06 to 1.08). For radiotherapy the result differed by indication: 1.09 for head and neck cancer, and no clear effect after breast-conserving surgery (0.98, interval 0.88 to 1.09). The studies are from many countries, none from this app's data.",
+    },
+    "borras_2015": {
+        "title": "Borras JM, Lievens Y, Dunscombe P, Coffey M, Malicki J, Corral J, Gasparotto C, Defourny N, Barton M, Verhoeven R, van Eycken L, Primic-Zakelj M, Trojanowski M, Strojan P, Grau C. The optimal utilization proportion of external beam radiotherapy in European countries: An ESTRO-HERO analysis. Radiotherapy and Oncology 2015;116:38-44",
+        "url": "https://doi.org/10.1016/j.radonc.2015.04.018",
+        "note": "Estimate for European countries, found through PubMed (PMID 25981052). Between 47.0% and 53.2% of new cancer patients need radiotherapy at least once. In most of the 24 countries with data, actual use was lower. The abstract gives no value for Finland.",
+    },
     "statfin_mortality": {
         "title": "Statistics Finland, causes of death (tables 13u5 and 11az) and population by age (table 11re)",
         "url": "https://stat.fi/en/statistics/ksyyt",
