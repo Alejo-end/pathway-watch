@@ -18,6 +18,10 @@
 
 ## Try it
 
+**Online:** https://alejo-end--cancer-care-atlas.us-east.modal.run (hosted on Modal, the same cached open data, the fixed template for the sentences).
+
+On your machine:
+
 ```
 uv sync
 uv run uvicorn backend.app:app --port 8010
@@ -43,6 +47,7 @@ Open http://localhost:8010 and pick a county and a cancer. The cached data is in
 
 | Document | For |
 |---|---|
+| `deploy/modal_app.py` | How the online link is served on Modal |
 | [HANDBOOK.md](HANDBOOK.md) | The app explained with maps, for anyone on the team |
 | [docs/TECHNICAL.md](docs/TECHNICAL.md) | Every file, the statistics, and the reasoning per cancer |
 | [PATHWAY_PLAN.md](PATHWAY_PLAN.md) | The build brief, with the sources of the roadmap |
