@@ -23,7 +23,8 @@ image = (
 app = modal.App("pathway-watch", image=image)
 
 
-@app.function(min_containers=0, max_containers=1, timeout=600)
+# One container stays warm, so a judge never waits for a cold start. It costs a few cents an hour of Modal credits.
+@app.function(min_containers=1, max_containers=1, timeout=600)
 @modal.concurrent(max_inputs=50)
 @modal.asgi_app(label="cancer-care-atlas")
 def web():
