@@ -1,7 +1,7 @@
 """Three plain sentences for the decision-maker: the gap, the pathway question, the first action.
 
-A fixed template writes them from the computed facts. If Anthropic credentials are present
-and PATHWAY_LLM is not 0, the language model rewords the facts instead. Either way, `check`
+A fixed template writes them from the computed facts. If Verda Inference or Anthropic credentials
+are present and PATHWAY_LLM is not 0, a language model rewords the facts instead. Either way, `check`
 removes a sentence before display if it breaks one of its rules.
 
 What `check` cannot do: it compares numbers and quantity words with the cited facts, but it
@@ -16,6 +16,8 @@ import json
 import os
 import re
 
+import httpx
+
 from . import nordcan
 from .analysis import ATTENDANCE, Pathway, gap, survival_interval
 from .facts import Fact, gap_phrase, interval_words, side_phrase
@@ -23,7 +25,10 @@ from .indicators import CANCERS, has_county_survival
 from .mortality import shared as shared_mortality
 from .sotkanet import CountyData
 
-MODEL = "claude-opus-5-5"
+ANTHROPIC_MODEL = "claude-opus-5-5"
+VERDA_BASE_URL = "https://inference.verda.com/v1"
+VERDA_MODEL = "kimi-k3-1-pro"
+VERDA_MAX_TOKENS = 1024
 NUMBER = re.compile(r"\d+(?:[.,]\d+)*")
 # Quantities written as words. A sentence may use one only if a cited fact uses it too.
 QUANTITY_WORDS = re.compile(
@@ -59,6 +64,11 @@ SCHEMA = {
     "required": ["sentences"],
     "additionalProperties": False,
 }
+
+
+def _model_payload(facts: list[Fact]) -> list[dict]:
+    """The only material sent to a model: already-computed, public aggregate facts."""
+    return [{"id": f.id, "fact": f.text} for f in facts]
 
 
 def numbers(text: str) -> set[str]:
@@ -101,7 +111,8 @@ def _first_action_sentence(recs: list[dict]) -> list[dict]:
         return []
     r = recs[0]
     action = r["action"].rstrip(".")
-    return [{"text": f"First action: {action[0].lower() + action[1:]} (roadmap measure {r['measure']}).",
+    origin = f"roadmap measure {r['measure']}" if r["source"] == "roadmap" else "our proposal, not a roadmap measure"
+    return [{"text": f"First action: {action[0].lower() + action[1:]} ({origin}).",
              "fact_ids": [f"measure.{r['measure']}"]}]
 
 
@@ -123,7 +134,7 @@ def _county_sentences(data: CountyData, cancer: str, county: str, pathway: Pathw
         iv = survival_interval(data, cancer, county)
         rough = f" Our rough 95% interval for the gap is {interval_words(iv)}." if iv else ""
         out.append({
-            "text": f"In {name}, five-year survival for {label} was {sg.county_value:g}% in {y}, against "
+            "text": f"In {name}, five-year relative survival for {label} was {sg.county_value:g}% in {y}, against "
                     f"{sg.national_value:g}% for Finland: {gap_phrase(sg)}.{rough} It was {side_phrase(sg)} in "
                     f"{sg.years_same_side} of {len(sg.years)} published years ({sg.years[0]} to {sg.years[-1]}).",
             "fact_ids": [f"{s_ind}.county.{y}", f"{s_ind}.national.{y}", f"{s_ind}.gap"] + ([f"{s_ind}.interval"] if iv else []),
@@ -171,25 +182,66 @@ def _national_sentences(data: CountyData, cancer: str, county: str, pathway: Pat
     return out
 
 
-def llm_sentences(facts: list[Fact]) -> list[dict] | None:
-    """Ask Claude to reword the facts. Returns None when no model is available."""
-    if os.getenv("PATHWAY_LLM", "1") == "0":
+def verda_sentences(facts: list[Fact]) -> list[dict] | None:
+    """Ask Verda's OpenAI-compatible endpoint to reword public, computed facts.
+
+    No patient data, identifiers, free text or source documents leave the app. A bad answer is
+    discarded by ``check`` below and the deterministic template remains the fallback.
+    """
+    key = os.getenv("VERDA_INFERENCE_API_KEY")
+    if not key:
         return None
+    base = os.getenv("VERDA_INFERENCE_BASE_URL", VERDA_BASE_URL).rstrip("/")
+    model = os.getenv("VERDA_MODEL", VERDA_MODEL)
+    max_tokens = int(os.getenv("VERDA_MAX_TOKENS", str(VERDA_MAX_TOKENS)))
+    prompt = (
+        SYSTEM
+        + "\nReturn one JSON object only, matching this shape: "
+        + json.dumps(SCHEMA, ensure_ascii=False)
+    )
+    try:
+        response = httpx.post(
+            f"{base}/chat/completions",
+            headers={"Authorization": f"Bearer {key}"},
+            json={
+                "model": model,
+                "temperature": 0,
+                # This is a constrained JSON rewrite, not a task that benefits from hidden reasoning.
+                # Kimi otherwise defaults to `max` reasoning and can exhaust the output budget before
+                # producing `content`.
+                "reasoning_effort": "none",
+                "max_tokens": max_tokens,
+                "response_format": {"type": "json_object"},
+                "messages": [
+                    {"role": "system", "content": prompt},
+                    {"role": "user", "content": json.dumps(_model_payload(facts), ensure_ascii=False)},
+                ],
+            },
+            timeout=20,
+        )
+        response.raise_for_status()
+        content = response.json()["choices"][0]["message"]["content"]
+        return json.loads(content).get("sentences", [])
+    except (httpx.HTTPError, KeyError, TypeError, ValueError, json.JSONDecodeError):
+        return None
+
+
+def anthropic_sentences(facts: list[Fact]) -> list[dict] | None:
+    """Ask Claude to reword the facts. Returns None when no model is available."""
     try:
         import anthropic
     except ImportError:
         return None
-    payload = [{"id": f.id, "fact": f.text} for f in facts]
     try:
         client = anthropic.Anthropic()
         resp = client.beta.messages.create(
-            model=MODEL,
+            model=ANTHROPIC_MODEL,
             max_tokens=4096,
             system=SYSTEM,
             betas=["server-side-fallback-2026-07-01"],
             fallbacks="default",
             output_config={"effort": "low", "format": {"type": "json_schema", "schema": SCHEMA}},
-            messages=[{"role": "user", "content": json.dumps(payload, ensure_ascii=False)}],
+            messages=[{"role": "user", "content": json.dumps(_model_payload(facts), ensure_ascii=False)}],
         )
     except anthropic.APIConnectionError:
         return None
@@ -210,11 +262,40 @@ def llm_sentences(facts: list[Fact]) -> list[dict] | None:
         return None
 
 
+def llm_draft(facts: list[Fact]) -> tuple[list[dict] | None, str | None]:
+    """Return the draft and the provider that actually supplied it."""
+    if os.getenv("PATHWAY_LLM", "1") == "0":
+        return None, None
+    draft = verda_sentences(facts)
+    if draft:
+        return draft, "verda"
+    draft = anthropic_sentences(facts)
+    return (draft, "anthropic") if draft else (None, None)
+
+
+def llm_sentences(facts: list[Fact]) -> list[dict] | None:
+    """Compatibility wrapper used by focused provider tests."""
+    return llm_draft(facts)[0]
+
+
+def _summary_model_facts(cancer: str, pathway: Pathway, facts: list[Fact]) -> list[Fact]:
+    """Give the writer only evidence that belongs in the three-sentence executive brief.
+
+    Bowel screening began within the historical survival window. When the pathway is open, it
+    must not be used to make a survival signal sound like a screening explanation. The app can
+    still show it separately as an early-warning campaign on its own view.
+    """
+    if pathway.step != "any":
+        return facts
+    screening = str(CANCERS[cancer].get("screening"))
+    return [f for f in facts if not f.id.startswith(screening + ".")]
+
+
 def summarize(data: CountyData, cancer: str, county: str, pathway: Pathway, recs: list[dict], facts: list[Fact]) -> dict:
     """The checked sentences, the removed ones with the reason, and who wrote them ("model" or "template").
     If the model's draft loses every sentence in the check, the template takes over."""
-    drafted = llm_sentences(facts)
-    writer = "model" if drafted else "template"
+    drafted, provider = llm_draft(_summary_model_facts(cancer, pathway, facts))
+    writer = provider or "template"
     kept, removed = check(drafted or template(data, cancer, county, pathway, recs), facts)
     if not kept and drafted:
         writer = "template"

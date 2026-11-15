@@ -8,6 +8,7 @@ from .analysis import Gap, Interval, Pathway, gap, rank, survival_interval
 from .channel import channel_table
 from .indicators import CANCERS, SOTKANET, SURVIVAL_WINDOW_YEARS, has_county_survival
 from .mortality import GOAL3, LABELS, Mortality
+from .registry import notification_shares
 from .sotkanet import CountyData
 
 
@@ -50,7 +51,9 @@ def survival_and_screening_facts(data: CountyData, cancer: str, county: str) -> 
                 f"{name}, {label}, {y}: a rough 95% interval for the gap is {interval_words(iv)}. It is our estimate "
                 f"from about {iv.patients} patients ({iv.cases_per_year} estimated new cases per year times "
                 f"{SURVIVAL_WINDOW_YEARS} diagnosis years, standard error {iv.se:g} points with the rounding of the "
-                "published values). It is not a published interval, and the true interval is wider",
+                "published values). It is not a published interval, and the true interval is wider. With the "
+                f"stricter limit for {iv.comparisons} counties compared at once, the interval is {iv.strict_low:+g} to "
+                f"{iv.strict_high:+g} points, which {'excludes' if iv.strict_excludes_zero else 'includes'} zero",
                 iv.se, "points", "survival_interval",
             ))
         r, n = rank(data, ind, county)
@@ -153,7 +156,7 @@ def channel_facts(data: CountyData, county: str) -> list[Fact]:
              f"physician visits per 1000 people aged 15-64",
              c["public_visits"], "per 1000", "sotkanet:2371"),
         Fact("channel.rank",
-             f"{name} ranks {c['rank']} of {t['n']} counties on reliance on the public channel in {y} (1 = most reliant)",
+             f"{name} is {c['rank']} of {t['n']} counties by the public share of visits in {y} (1 = largest). This orders channel use, not the quality of care",
              c["rank"], "rank", "sotkanet:293"),
         Fact("channel.roadmap",
              "In a Finnish study of 160 lymphoma patients, the median time from first symptoms to treatment was "
@@ -173,11 +176,28 @@ EVIDENCE = {
 }
 
 
+def registry_facts(data: CountyData, cancer: str, county: str) -> list[Fact]:
+    """The share of new cases with a clinical notification, the Cancer Registry's source for stage."""
+    s = notification_shares(cancer, county)
+    if s is None:
+        return []
+    name, y = data.names[county], s["years"]
+    span = lambda v: f"{min(v)}% to {max(v)}%" if min(v) != max(v) else f"{v[0]}%"
+    return [Fact(
+        "registry.stage_source",
+        f"{name}, {CANCERS[cancer]['label'].lower()}, {y[0]} to {y[-1]}: the Cancer Registry received a clinical "
+        f"notification, its source for stage at diagnosis, for {span(s['county'])} of new cases each year. "
+        f"Finland: {span(s['national'])}",
+        s["county"][-1], "%", "fcr_clinical",
+    )]
+
+
 def pathway_and_action_facts(pathway: Pathway, recs: list[dict]) -> list[Fact]:
     """The pathway step to ask about and the first recommended roadmap measure."""
     out = [Fact("pathway", f"Question to investigate: {pathway.label} (evidence: {EVIDENCE[pathway.evidence]}). "
                 f"{pathway.reason}", None, "", "pathway_rule")]
     if recs:
         r = recs[0]
-        out.append(Fact(f"measure.{r['measure']}", f"Roadmap measure {r['measure']}: {r['action']}", None, "", "roadmap"))
+        origin = "Roadmap measure" if r["source"] == "roadmap" else "Local pilot proposal"
+        out.append(Fact(f"measure.{r['measure']}", f"{origin} {r['measure']}: {r['action']}", None, "", r["source"]))
     return out

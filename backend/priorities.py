@@ -4,6 +4,8 @@ A survival signal counts when the county is below Finland in the latest year and
 95% interval of the gap excludes zero (`analysis.rough_interval`). An attendance signal counts
 when the county is below Finland in the latest year and in most published years. Sotkanet
 publishes no confidence interval, so the first is our estimate and the second is a description.
+With 22 counties, about one such interval excludes zero by chance, so each survival signal also says
+if it holds with the stricter limit for that many comparisons (`strict`).
 A deaths signal counts when the county has more deaths than expected with a 95% interval above
 100 (Statistics Finland). Survival, screening and
 deaths come from different registers, but survival and deaths for one cancer are related
@@ -28,7 +30,7 @@ def signals(data: CountyData, mort: Mortality, cancer: str, county: str) -> list
         iv = survival_interval(data, cancer, county)
         if g.direction == "below" and iv and iv.excludes_zero:
             out.append({"kind": "survival", "text": f"Survival {g.gap:+g} points in {g.year}", "size": abs(g.gap),
-                        "source": f"sotkanet:{g.indicator}"})
+                        "source": f"sotkanet:{g.indicator}", "strict": iv.strict_excludes_zero})
         g = gap(data, CANCERS[cancer]["screening"], county)
         if g.direction == "below" and g.persistence == "persistent":
             out.append({"kind": "screening", "text": f"Programme attendance {g.gap:+g} points in {g.year}",
@@ -61,6 +63,8 @@ def ranking(data: CountyData, mort: Mortality, cancer: str) -> dict:
     for r in rows:
         by_measure[r["measure"]] = by_measure.get(r["measure"], 0) + 1
     # Lung cancer has no county survival or screening data, so deaths are its only register.
+    survival = [s for r in rows for s in r["signals"] if s["kind"] == "survival"]
     return {"cancer": cancer, "rows": rows, "by_measure": by_measure,
+            "survival_signals": len(survival), "survival_strict": sum(1 for s in survival if s["strict"]),
             "registers": 3 if has_county_survival(cancer) else 1,
             "without_signal": len(data.counties) - len(rows), "counties": len(data.counties)}

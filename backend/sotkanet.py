@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from .indicators import EXCLUDED, NATIONAL, POPULATION, SOTKANET
@@ -22,6 +22,8 @@ class CountyData:
     population: dict[str, float]
     fetched: dict[int, str]
     titles: dict[int, str]
+    # The count behind a value, where Sotkanet gives one, keyed like `values`. For a share it is the numerator.
+    counts: dict[int, dict[str, dict[int, int]]] = field(default_factory=dict)
 
     @property
     def counties(self) -> list[str]:
@@ -46,20 +48,25 @@ def load(raw: Path = RAW) -> CountyData:
     fetched: dict[int, str] = {}
     titles: dict[int, str] = {}
     population: dict[str, float] = {}
+    counts: dict[int, dict[str, dict[int, int]]] = {}
     for ind, (label, _, _) in SOTKANET.items():
         doc = json.loads((raw / f"sotkanet_{ind}.json").read_text())
         table: dict[str, dict[int, float]] = {}
+        count: dict[str, dict[int, int]] = {}
         for row in doc["rows"]:
             code = code_of.get(row["region"])
             if code is not None:
                 table.setdefault(code, {})[row["year"]] = float(row["value"])
+                if row.get("absValue") is not None:
+                    count.setdefault(code, {})[row["year"]] = int(row["absValue"])
         if ind == POPULATION:
             population = {c: v[max(v)] for c, v in table.items()}
             continue
         values[ind] = table
+        counts[ind] = count
         fetched[ind] = doc.get("fetched", "")
         titles[ind] = doc.get("title") or label
-    return CountyData(values, names, population, fetched, titles)
+    return CountyData(values, names, population, fetched, titles, counts)
 
 
 def english_name(fi: str) -> str:

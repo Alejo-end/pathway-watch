@@ -10,15 +10,17 @@ POPULATION = 127  # population on 31 December
 
 # Indicator ID -> (label, first year to fetch, last year to fetch).
 SOTKANET: dict[int, tuple[str, int, int]] = {
-    3627: ("Five-year survival, bowel cancer", 2015, 2024),
-    3625: ("Five-year survival, breast cancer", 2015, 2024),
-    3626: ("Five-year survival, cervical cancer", 2015, 2024),
+    3627: ("Five-year relative survival, bowel cancer", 2015, 2024),
+    3625: ("Five-year relative survival, breast cancer", 2015, 2024),
+    3626: ("Five-year relative survival, cervical cancer", 2015, 2024),
     6103: ("Attendance in the public bowel screening programme", 2022, 2024),
     3621: ("Attendance in the public breast screening programme", 2015, 2024),
     3620: ("Attendance in the public cervical screening programme", 2015, 2024),
     2371: ("Occupational health physician visits per 1000 aged 15-64", 2020, 2024),
     293: ("Public primary care physician visits per 1000 aged 15-64", 2020, 2024),
     692: ("Kela-reimbursed private physician visits, % of population", 2020, 2024),
+    6411: ("Primary care: non-urgent physician visits after more than 7 days, % of visits", 2021, 2025),
+    3336: ("Specialised care: patients waiting over 6 months per 10 000 inhabitants", 2020, 2025),
     POPULATION: ("Population on 31 December", 2024, 2024),
 }
 

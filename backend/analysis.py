@@ -7,15 +7,19 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from statistics import NormalDist
 
 from . import nordcan
 from .indicators import CANCERS, NATIONAL, STEPS, SURVIVAL_WINDOW_YEARS, has_county_survival
+from .mortality import shared as shared_mortality
+from .registry import stage_sentence
 from .sotkanet import CountyData
 
 # A difference of up to this many points counts as "near the national value". Sotkanet rounds survival
 # to whole percent, so a gap of exactly one point can be rounding alone and must not count as a gap.
 NEAR = 1.0
 MIN_YEARS = 3  # fewer shared years than this say nothing about persistence
+DEATHS_TO_CHECK = 30  # below this many deaths in the pooled years, the SMR interval is too wide to confirm anything
 ROUNDING_VARIANCE = 2 / 12  # two values rounded to whole percent, each with a uniform error of half a point
 
 
@@ -76,9 +80,20 @@ class Interval:
     low: float  # the gap minus 1.96 standard errors
     high: float  # the gap plus 1.96 standard errors
     excludes_zero: bool
+    comparisons: int = 1  # how many counties are compared with Finland at once
+    strict_low: float | None = None  # the same interval with the limit for that many comparisons
+    strict_high: float | None = None
+    strict_excludes_zero: bool | None = None
 
 
-def rough_interval(county_value: float | None, national_value: float | None, cases_per_year: float | None) -> Interval | None:
+def strict_z(comparisons: int) -> float:
+    """The normal limit that keeps the chance of any false signal among `comparisons` intervals at 5%
+    (Bonferroni). 1.96 for one comparison, about 3.05 for 22."""
+    return NormalDist().inv_cdf(1 - 0.05 / (2 * max(comparisons, 1)))
+
+
+def rough_interval(county_value: float | None, national_value: float | None, cases_per_year: float | None,
+                   comparisons: int = 1) -> Interval | None:
     """A rough 95% interval for county minus national survival, from the number of patients.
 
     The standard error of the county value is binomial: sqrt(p(1-p)/n), with n = new cases
@@ -87,8 +102,12 @@ def rough_interval(county_value: float | None, national_value: float | None, cas
 
     The result is still too narrow, for reasons that the page states. Relative survival
     varies more than a plain share. The follow-up uses only part of the ten years. The
-    county case count is an estimate from population share. The national value counts as
+    county case count is an estimate from the age structure. The national value counts as
     exact apart from its rounding. Sotkanet publishes no interval.
+
+    The app compares every county with Finland, so about one 95% interval in twenty excludes
+    zero by chance. `comparisons` is the number of counties. The strict interval uses the
+    limit of `strict_z`, and a gap that excludes zero there is not explained by the number of counties.
     """
     if county_value is None or national_value is None or not cases_per_year:
         return None
@@ -97,15 +116,29 @@ def rough_interval(county_value: float | None, national_value: float | None, cas
     se = math.sqrt(100 ** 2 * p * (1 - p) / n + ROUNDING_VARIANCE)
     diff = county_value - national_value
     low, high = round(diff - 1.96 * se, 1) + 0.0, round(diff + 1.96 * se, 1) + 0.0  # + 0.0 turns -0.0 into 0.0
-    return Interval(n, round(cases_per_year), round(se, 1), low, high, low > 0 or high < 0)
+    z = strict_z(comparisons)
+    s_low, s_high = round(diff - z * se, 1) + 0.0, round(diff + z * se, 1) + 0.0
+    return Interval(n, round(cases_per_year), round(se, 1), low, high, low > 0 or high < 0,
+                    comparisons, s_low, s_high, s_low > 0 or s_high < 0)
+
+
+def many_counties_caveat(iv: Interval) -> str:
+    """What the stricter limit says about a gap whose 95% interval excludes zero."""
+    verdict = ("still excludes zero, so the number of counties does not explain the gap" if iv.strict_excludes_zero
+               else "includes zero, so the gap can be one of the chance signals")
+    return (f"The app compares {iv.comparisons} counties with Finland, so about one 95% interval excludes zero by "
+            f"chance. With the stricter limit for {iv.comparisons} comparisons the interval is "
+            f"{iv.strict_low:+g} to {iv.strict_high:+g} points. It {verdict}.")
 
 
 def county_cases(data: CountyData, cancer: str, county: str) -> dict:
-    """Estimated new cases per year in the county, from the NORDCAN count for Finland."""
+    """Estimated new cases per year in the county, from the NORDCAN count for Finland and the county's age structure."""
     nc = nordcan.load()
     finland = nordcan.combined(nc, cancer, "finland")
+    mort = shared_mortality()
     return estimated_cases(data, county, finland["cases"] if finland else None,
-                           f"NORDCAN, average {nc.get('period')}", "nordcan")
+                           f"NORDCAN, average {nc.get('period')}", "nordcan",
+                           age_share=mort.expected_share(cancer, county) if mort.ok else None)
 
 
 def survival_interval(data: CountyData, cancer: str, county: str) -> Interval | None:
@@ -113,7 +146,8 @@ def survival_interval(data: CountyData, cancer: str, county: str) -> Interval | 
     if not has_county_survival(cancer):
         return None
     g = gap(data, CANCERS[cancer]["survival"], county)
-    return rough_interval(g.county_value, g.national_value, county_cases(data, cancer, county)["value"])
+    return rough_interval(g.county_value, g.national_value, county_cases(data, cancer, county)["value"],
+                          comparisons=len(data.counties))
 
 
 def rank(data: CountyData, indicator: int, county: str) -> tuple[int, int]:
@@ -135,6 +169,7 @@ class Pathway:
     evidence: str  # interval_excludes_zero, interval_includes_zero, persistent, mixed, short, or national
     reason: str
     caveats: list[str]
+    deaths: str | None = None  # agree, not_confirmed or too_few: the survival gap read against deaths
 
 
 ATTENDANCE = "attendance in the public screening programme"
@@ -196,16 +231,23 @@ def locate(data: CountyData, cancer: str, county: str) -> Pathway:
     if surv.direction != "below":
         return Pathway(
             cancer, "none", "No survival gap found", surv.persistence,
-            "Five-year survival is at or above the national value.", caveats,
+            "Five-year relative survival is at or above the national value.", caveats,
         )
     iv = survival_interval(data, cancer, county)
     evidence = "short" if iv is None else "interval_excludes_zero" if iv.excludes_zero else "interval_includes_zero"
+    if iv and iv.excludes_zero:
+        caveats.append(many_counties_caveat(iv))
+    deaths_status, deaths = deaths_check(cancer, county) or (None, None)
+    if deaths:
+        caveats.append(deaths)
     no_split = "No public source gives stage, referral or waiting times per county, so the app cannot tell the steps apart."
+    stage = stage_sentence(cancer, county, data.names[county])
+    stage_note = [stage] if stage else []  # read after the note that no public source gives stage per county
     if too_new:
         return Pathway(
             cancer, "any", "Detection, referral, diagnosis or treatment", evidence,
             "Survival is below the national value. This data cannot tell which step of the pathway the gap "
-            "comes from. This raises a question about every step.", caveats + [no_split],
+            "comes from. This raises a question about every step.", caveats + [no_split] + stage_note, deaths_status,
         )
     if scr.direction == "below":
         if evidence == "interval_excludes_zero" and scr.persistence != "persistent":
@@ -213,7 +255,7 @@ def locate(data: CountyData, cancer: str, county: str) -> Pathway:
         return Pathway(
             cancer, "detection", STEPS["detection"], evidence,
             f"Survival and {ATTENDANCE} are both below the national value. "
-            "This raises a question about detection.", caveats + [OUTSIDE_PROGRAMME],
+            "This raises a question about detection.", caveats + [OUTSIDE_PROGRAMME] + stage_note, deaths_status,
         )
     return Pathway(
         cancer, "later",
@@ -221,8 +263,34 @@ def locate(data: CountyData, cancer: str, county: str) -> Pathway:
         evidence if scr.direction != "unknown" else "short",
         f"Survival is below the national value, but {ATTENDANCE} is not. "
         "This raises a question about the steps after detection.",
-        caveats + ["No public source gives referral or waiting times per county, so the app cannot tell these three steps apart."],
+        caveats + ["No public source gives referral or waiting times per county, so the app cannot tell these three steps apart."] + stage_note,
+        deaths_status,
     )
+
+
+def deaths_check(cancer: str, county: str) -> tuple[str, str] | None:
+    """Reads a survival gap against the county's deaths from the same cancer, a second register.
+
+    Low survival with more deaths than the age structure predicts: two registers agree. Low survival
+    without extra deaths: fewer deaths per diagnosed patient but no more deaths overall, which fits
+    fewer diagnoses for the same deaths (fewer early cancers found) or chance. The two cover different
+    years, so the sentence reports agreement, never a cause. Returns (agree | not_confirmed | too_few, sentence).
+    """
+    m = shared_mortality()
+    if not m.ok or cancer not in m.causes:
+        return None
+    s = m.smr(cancer, county)
+    if s.observed < DEATHS_TO_CHECK:
+        return "too_few", (f"Too few deaths to check the survival gap against a second register: {s.observed} deaths from this "
+                f"cancer in {s.years[0]} to {s.years[-1]}.")
+    where = (f"{s.deaths_per_year:g} deaths per year in {s.years[0]} to {s.years[-1]}, "
+             f"SMR {s.smr}, 95% interval {s.low} to {s.high}")
+    if s.low > 100:
+        return "agree", f"Deaths agree: more deaths from this cancer than the age structure predicts ({where})."
+    expected = "fewer than expected" if s.high < 100 else "the interval includes the expected number"
+    return "not_confirmed", (f"Deaths do not confirm the survival gap ({where}, {expected}). "
+            "A survival gap without extra deaths can come from fewer early cancers found, which lowers survival "
+            "without adding deaths, or from chance. Ask for stage at diagnosis before changing treatment.")
 
 
 def _locate_from_national_evidence(cancer: str) -> Pathway:
@@ -240,21 +308,40 @@ def _locate_from_national_evidence(cancer: str) -> Pathway:
     )
 
 
-def estimated_cases(data: CountyData, county: str, national_cases: int | None, basis: str, source: str) -> dict:
-    """New cases per year in the county: the national count times the county's population share.
+AGE_SHARE_LIMIT = ("The age pattern of deaths from this cancer stands in for the age pattern of new cases. "
+                   "Patients die at an older age than they are diagnosed, so the estimate is somewhat high "
+                   "for a county with many old people and somewhat low for a young county.")
+POPULATION_SHARE_LIMIT = "It ignores the age structure of the county."
 
-    It ignores the age structure of the county, so the result is labelled as an estimate.
+
+def estimated_cases(data: CountyData, county: str, national_cases: int | None, basis: str, source: str,
+                    age_share: float | None = None) -> dict:
+    """New cases per year in the county: the national count times the county's share.
+
+    `age_share` is the share that the county's age structure predicts (`Mortality.expected_share`).
+    Without it the share is the county's share of the population, which ignores age. Cancer is a
+    disease of old age, so the two differ: Satakunta holds 3.7% of the people and 4.6% of the
+    expected bowel cancer deaths. The result is an estimate in both cases, and `limit` says why.
     `basis` says where the national count comes from, for display.
     """
     pop = data.population.get(county)
     nat = data.population.get(NATIONAL)
-    if not pop or not nat or national_cases is None:
+    if national_cases is None or (age_share is None and (not pop or not nat)):
         return {"value": None, "status": "missing", "source": source}
+    by_population = f"{pop / nat:.1%}" if pop and nat else None
+    if age_share is not None:
+        return {
+            "value": round(national_cases * age_share),
+            "status": "estimate", "basis": "age structure", "source": source,
+            "method": f"{national_cases} new cases per year in Finland ({basis}) x {age_share:.1%}, the county's share "
+                      "by age structure" + (f" (its share of the population is {by_population})" if by_population else ""),
+            "limit": AGE_SHARE_LIMIT, "share_source": "statfin_mortality",
+        }
     return {
         "value": round(national_cases * pop / nat),
-        "status": "estimate",
-        "source": source,
-        "method": f"{national_cases} new cases per year in Finland ({basis}) x county population share {pop / nat:.1%}",
+        "status": "estimate", "basis": "population", "source": source,
+        "method": f"{national_cases} new cases per year in Finland ({basis}) x county population share {by_population}",
+        "limit": POPULATION_SHARE_LIMIT, "share_source": None,
     }
 
 

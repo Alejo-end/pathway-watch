@@ -1,0 +1,220 @@
+{
+ "_note": "External-beam radiotherapy units in Finland and the unit that serves each wellbeing services county, compiled by hand on 2026-11-14 from each unit's own service page or the county's own plan. lat and lon are the hospital's location, to about 1 km. A county served by more than one unit lists them all; the distance is to the nearest of them. A county marked not_verified has no public source that we found; the app shows no unit and no distance for it.",
+ "units": {
+  "hus": {
+   "name": "HUS Comprehensive Cancer Center, Meilahti",
+   "city": "Helsinki",
+   "county": "90",
+   "lat": 60.19,
+   "lon": 24.906,
+   "url": "https://www.hus.fi/en/patient/hospitals-and-other-units/comprehensive-cancer-center/radiation-therapy-ward-comprehensive",
+   "says": "Responsible for all external radiation therapies administered in the Uusimaa region."
+  },
+  "tyks": {
+   "name": "Tyks, Turku University Hospital",
+   "city": "Turku",
+   "county": "05",
+   "lat": 60.452,
+   "lon": 22.293,
+   "url": "https://hoito-ohjeet.fi/fi/Ohjepankki/YHTEINEN/S%C3%A4dehoitoon%20tulevalle.pdf",
+   "says": "Lists the radiotherapy units of the Satakunta, Vaasa and Southwest Finland hospital districts: Turku (TYKS), Pori (Satks) and Vaasa (VKS)."
+  },
+  "pori": {
+   "name": "Satasairaala",
+   "city": "Pori",
+   "county": "06",
+   "lat": 61.474,
+   "lon": 21.851,
+   "url": "https://hoito-ohjeet.fi/fi/Ohjepankki/YHTEINEN/S%C3%A4dehoitoon%20tulevalle.pdf",
+   "says": "Lists the radiotherapy units of the Satakunta, Vaasa and Southwest Finland hospital districts: Turku (TYKS), Pori (Satks) and Vaasa (VKS)."
+  },
+  "vaasa": {
+   "name": "Vaasa Central Hospital",
+   "city": "Vaasa",
+   "county": "17",
+   "lat": 63.085,
+   "lon": 21.611,
+   "url": "https://www.suomi.fi/palvelut/sadehoito-osasto-pohjanmaan-hyvinvointialue/66c3cc17-bb56-4b5d-99fe-5a67bb1e76e8",
+   "says": "Radiotherapy ward, Hietalahdenkatu 2-4, Vaasa."
+  },
+  "tays": {
+   "name": "Tays Central Hospital",
+   "city": "Tampere",
+   "county": "08",
+   "lat": 61.506,
+   "lon": 23.811,
+   "url": "https://www.suomi.fi/palvelut/palvelupiste/sadehoitoyksikko-tays-keskussairaala-pirkanmaan-hyvinvointialue/8f63f4c3-4d96-4559-9a36-44f7bb9a0e6c",
+   "says": "Radiotherapy unit in the Radius building, Sädetie 6, Tampere."
+  },
+  "lahti": {
+   "name": "Päijät-Häme Central Hospital",
+   "city": "Lahti",
+   "county": "09",
+   "lat": 60.982,
+   "lon": 25.682,
+   "url": "https://paijatha.fi/palvelut-ja-hoitoon-hakeutuminen/terveyspalvelut/poliklinikat/sadehoitoyksikko/",
+   "says": "Plans and delivers complete radiotherapy courses, Keskussairaalankatu 7, Lahti."
+  },
+  "kotka": {
+   "name": "Kymenlaakso Central Hospital",
+   "city": "Kotka",
+   "county": "10",
+   "lat": 60.513,
+   "lon": 26.926,
+   "url": "https://www.suomi.fi/palvelut/palvelupiste/kymenlaakson-keskussairaala-kymenlaakson-hyvinvointialue/abb0490a-dda3-48cf-a6df-37c4d86fa61b",
+   "says": "Lists a radiotherapy service."
+  },
+  "nova": {
+   "name": "Sairaala Nova",
+   "city": "Jyväskylä",
+   "county": "15",
+   "lat": 62.229,
+   "lon": 25.715,
+   "url": "https://www.sairaalanova.fi/fi-FI/Yksikot/Muut_tutkimus_ja_hoitopalvelut/Sadehoito(35089)",
+   "says": "Radiotherapy unit of Central Finland, Hoitajantie 3, Jyväskylä."
+  },
+  "kys": {
+   "name": "KYS Radiotherapy Hospital",
+   "city": "Kuopio",
+   "county": "13",
+   "lat": 62.894,
+   "lon": 27.638,
+   "url": "https://www.suomi.fi/palvelut/palvelupiste/kys-sadesairaala-pohjois-savon-hyvinvointialue/fc88078c-9bfd-4d14-9915-4d2ee2e88c99",
+   "says": "Radiotherapy unit, Kelkkailijantie 7, Kuopio."
+  },
+  "joensuu": {
+   "name": "North Karelia Central Hospital",
+   "city": "Joensuu",
+   "county": "14",
+   "lat": 62.594,
+   "lon": 29.783,
+   "url": "https://www.siunsote.fi/palvelu/syopatautien-ja-sadehoidon-palvelut/",
+   "says": "Radiotherapy unit in the cancer centre, for adults except blood cancers."
+  },
+  "oys": {
+   "name": "Oulu University Hospital (OYS)",
+   "city": "Oulu",
+   "county": "19",
+   "lat": 65.008,
+   "lon": 25.519,
+   "url": "https://www.suomi.fi/palvelut/palvelupiste/oysin-sadehoidon-yksikko-pohjois-pohjanmaan-hyvinvointialue/6ef3eba4-7471-4c77-8f6d-578b809dfa37",
+   "says": "Radiotherapy unit in the E building of Oulu University Hospital."
+  },
+  "lappeenranta": {
+   "name": "South Karelia Central Hospital",
+   "city": "Lappeenranta",
+   "county": "11",
+   "lat": 61.064,
+   "lon": 28.093,
+   "url": "https://yle.fi/a/3-12671005",
+   "says": "Patients from South Savo who get radiotherapy are treated in Kuopio, Jyväskylä or Lappeenranta (Yle, 1 November 2022)."
+  }
+ },
+ "served_by": {
+  "90": {
+   "unit": "hus",
+   "basis": "own"
+  },
+  "01": {
+   "unit": "hus",
+   "basis": "HUS gives all external radiotherapy in Uusimaa",
+   "url": "https://www.hus.fi/en/patient/hospitals-and-other-units/comprehensive-cancer-center/radiation-therapy-ward-comprehensive"
+  },
+  "02": {
+   "unit": "hus",
+   "basis": "HUS gives all external radiotherapy in Uusimaa",
+   "url": "https://www.hus.fi/en/patient/hospitals-and-other-units/comprehensive-cancer-center/radiation-therapy-ward-comprehensive"
+  },
+  "03": {
+   "unit": "hus",
+   "basis": "HUS gives all external radiotherapy in Uusimaa",
+   "url": "https://www.hus.fi/en/patient/hospitals-and-other-units/comprehensive-cancer-center/radiation-therapy-ward-comprehensive"
+  },
+  "04": {
+   "unit": "hus",
+   "basis": "HUS gives all external radiotherapy in Uusimaa",
+   "url": "https://www.hus.fi/en/patient/hospitals-and-other-units/comprehensive-cancer-center/radiation-therapy-ward-comprehensive"
+  },
+  "05": {
+   "unit": "tyks",
+   "basis": "own"
+  },
+  "06": {
+   "unit": "pori",
+   "basis": "own"
+  },
+  "17": {
+   "unit": "vaasa",
+   "basis": "own"
+  },
+  "08": {
+   "unit": "tays",
+   "basis": "own"
+  },
+  "09": {
+   "unit": "lahti",
+   "basis": "own"
+  },
+  "10": {
+   "unit": "kotka",
+   "basis": "own"
+  },
+  "15": {
+   "unit": "nova",
+   "basis": "own"
+  },
+  "12": {
+   "unit": [
+    "kys",
+    "nova",
+    "lappeenranta"
+   ],
+   "basis": "Patients from South Savo who get radiotherapy are treated in Kuopio, Jyväskylä or Lappeenranta (Yle, 1 November 2022)",
+   "url": "https://yle.fi/a/3-12671005"
+  },
+  "13": {
+   "unit": "kys",
+   "basis": "own"
+  },
+  "14": {
+   "unit": "joensuu",
+   "basis": "own"
+  },
+  "19": {
+   "unit": "oys",
+   "basis": "own"
+  },
+  "20": {
+   "unit": "oys",
+   "basis": "OYS is the only unit that gives radiotherapy in Northern Finland (Kaleva, 7 July 2022)",
+   "url": "https://www.kaleva.fi/oysin-uusi-sadehoitoyksikko-luovutettiin-pohjois-p/4750548"
+  },
+  "21": {
+   "unit": "oys",
+   "basis": "OYS is the only unit that gives radiotherapy in Northern Finland (Kaleva, 7 July 2022)",
+   "url": "https://www.kaleva.fi/oysin-uusi-sadehoitoyksikko-luovutettiin-pohjois-p/4750548"
+  },
+  "16": {
+   "unit": "vaasa",
+   "basis": "the county buys radiotherapy mainly from Ostrobothnia",
+   "url": "https://www.hyvaep.fi/uploads/2026/05/omavalvontasuunnitelma-urologian-poliklinikka-13.5.2026.pdf"
+  },
+  "07": {
+   "unit": "tays",
+   "basis": "Patients are referred to Tays, where the Tays Cancer Centre gives radiotherapy (FICAN Mid)",
+   "url": "https://www.ficanmid.fi/potilaalle/"
+  },
+  "11": {
+   "unit": "lappeenranta",
+   "basis": "own"
+  },
+  "18": {
+   "unit": [
+    "oys",
+    "vaasa"
+   ],
+   "basis": "Radiotherapy is mainly given at Oulu University Hospital and Vaasa Central Hospital (Soite)",
+   "url": "https://soite.fi/palvelut-ja-yhteys/terveys-ja-sairaanhoitopalvelut/keski-pohjanmaan-keskussairaala/syopataudit/"
+  }
+ }
+}

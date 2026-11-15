@@ -19,14 +19,19 @@ STATIC_SOURCES: dict[str, dict] = {
         "note": "Implementation roadmap, file Kansallinen_syopastrategia_toimeenpanon_tiekartta_2026_2031.pdf from the AstraZeneca resource pack. In Finnish. Measure numbers and pages are quoted as written.",
     },
     "thl_21_2016": {
-        "title": "THL guidance 21/2016 on monitoring access to cancer care",
-        "url": None,
+        "title": "Sillanpää M, Pylkkänen L, Häkkinen P. Hoitoonpääsyn seuranta syövän hoidossa: määrittelyt ja ohjeistus. THL Ohjaus 21/2016",
+        "url": "https://urn.fi/URN:ISBN:978-952-302-782-4",
         "note": "Reference for treatment target times in Goal 3, indicator 3.",
     },
     "cancer_registry": {
         "title": "Finnish Cancer Registry, cancer statistics",
         "url": "https://syoparekisteri.fi/tilastot/",
-        "note": "Holds case counts, stage and survival per region. The app does not read it: its statistics application has no open API that we found.",
+        "note": "Holds case counts and survival per region. Stage at diagnosis (2020-2024) is published for the whole country only: with a county selected, the stage option of the statistics application disappears. Nationally, 11115 of 20421 bowel cancers in 2020-2024 have unknown stage. The app does not read this application: it has no open API that we found.",
+    },
+    "fcr_clinical": {
+        "title": "Finnish Cancer Registry, clinical notifications by wellbeing services county",
+        "url": "https://tilastot.syoparekisteri.fi/syopalaatu/",
+        "note": "Share of new cancers for which the treating unit sent its clinical notification, the summary that the registry records stage from. Bowel, breast and lung cancer, 2020 to 2024, read from the chart data of the application on 2026-11-14 into data/raw/fcr_clinical_notifications.json. Licence CC BY 4.0. A low share is a fact about reporting, not about the quality of care. Code: backend/registry.py.",
     },
     "nordcan": {
         "title": "NORDCAN 2.0, Nordic cancer statistics",
@@ -34,14 +39,14 @@ STATIC_SOURCES: dict[str, dict] = {
         "note": "Benchmark for the Nordic level in Goal 3.",
     },
     "pathway_rule": {
-        "title": "Pathway Watch rule, computed by the app",
+        "title": "Cancer Care Atlas rule, computed by the app",
         "url": None,
         "note": "Low survival with low attendance in the public screening programme raises a question about detection. Low survival with normal attendance raises a question about referral, diagnosis or treatment. For bowel cancer the rule does not use attendance, because national screening started in 2022, after most of the diagnoses behind the survival value. The rule compares counties, not patients, so the result is a question to investigate, not a cause. Code: backend/analysis.py, locate().",
     },
     "survival_interval": {
         "title": "Rough 95% interval of a county survival gap, computed by the app",
         "url": None,
-        "note": "Our estimate, not a published interval. Standard error of the county value = sqrt(p(1-p)/n), with n = estimated new cases per year times the ten diagnosis years behind one Sotkanet value. The rounding of both published values to whole percent is added. The true interval is wider: relative survival varies more than a plain share, the follow-up uses part of the ten years, and the county case count ignores the age structure. Code: backend/analysis.py, rough_interval().",
+        "note": "Our estimate, not a published interval. Standard error of the county value = sqrt(p(1-p)/n), with n = estimated new cases per year times the ten diagnosis years behind one Sotkanet value. The rounding of both published values to whole percent is added. The true interval is wider: relative survival varies more than a plain share, the follow-up uses part of the ten years, and the county case count is an estimate. The estimate splits the national count by the county's age structure, with the age pattern of deaths as a stand-in for the age pattern of new cases. The app compares 22 counties with Finland, so about one such interval excludes zero by chance. The page also gives the interval with the stricter limit for 22 comparisons (Bonferroni). Code: backend/analysis.py, rough_interval().",
     },
     "fuhrmann_2024": {
         "title": "Fuhrmann J, Heinävaara S, Sarkeala T, Lehtinen M, Pankakoski M. Coverage of mammography imaging in and outside an organized breast cancer screening program: variation by age and sociodemographic groups. Acta Oncologica 2024;63:833-840",
@@ -84,9 +89,39 @@ STATIC_SOURCES: dict[str, dict] = {
         "note": "Laura Aaltonen of AstraZeneca, passed on by the organizers: the limit to public data applies to the hackathon. In a real setting an integrated solution can have access to the relevant patient data. PATHWAY_PLAN.md holds the full answer.",
     },
     "local_step": {
-        "title": "Pathway Watch proposal for a first local step, written by the team",
+        "title": "Cancer Care Atlas proposal for a first local step, written by the team",
         "url": None,
         "note": "Our proposal for what one health centre or one county can start next month. It is not text of the roadmap. No county reviewed it. Code: backend/recommend.py, LOCAL_STEPS.",
+    },
+    "radiotherapy_pilot": {
+        "title": "Cancer Care Atlas radiotherapy equity baseline, written by the team",
+        "url": None,
+        "note": "A proposed aggregate measurement protocol. It is not a clinical guideline, a treatment recommendation or a county performance dataset. No radiation oncology department, data controller or medical physics team reviewed it. Code: backend/radiotherapy.py.",
+    },
+    "fcr_screening": {
+        "title": "Finnish Cancer Registry, cancer screening pages: who is invited to each national programme",
+        "url": "https://cancerregistry.fi/screening/",
+        "note": "Read on 14 November 2026. Breast: women aged 50 to 69, every two years, mammography. Cervical: women aged 30 to 65, every five years, and some municipalities also invite women aged 25. Bowel: a stool test (FIT) by mail every two years, all people aged 56 to 74 in 2031. The bowel page named the ages 60 to 70 as the current group.",
+    },
+    "virtanen_2011": {
+        "title": "Virtanen A, Nieminen P, Luostarinen T, Anttila A. Self-sample HPV tests as an intervention for nonattendees of cervical cancer screening in Finland: a randomized trial. Cancer Epidemiology, Biomarkers & Prevention 2011;20(9):1960-9",
+        "url": "https://doi.org/10.1158/1055-9965.EPI-11-0307",
+        "note": "Randomized trial in Espoo, found through PubMed (PMID 21752985). Women who did not attend after the first invitation got a self-sampling kit (2,397 women) or a reminder letter (6,302 women). Total attendance rose from 65% to 76% with the kit and from 65% to 74% with the letter. The letter and then the kit raised it from 63% to 78%. One municipality and cervical screening only.",
+    },
+    "virtanen_2010": {
+        "title": "Virtanen A, Anttila A, Luostarinen T, Nieminen P. Self-sampling versus reminder letter: effects on cervical cancer screening attendance and coverage in Finland. International Journal of Cancer 2011;128(11):2681-7",
+        "url": "https://doi.org/10.1002/ijc.25581",
+        "note": "Randomized study in Espoo in 2008, found through PubMed (PMID 20669228). Of the women who took part after a kit or a reminder letter, about 20% had their last Pap test five or more years before. For 70% to 75% the second contact only gave a test that they did not need yet. The women reported their earlier tests themselves.",
+    },
+    "jantti_2021": {
+        "title": "Jäntti M, Heinävaara S, Malila N, Sarkeala T. Sociodemographic features and patterns of non-participation in colorectal cancer screening in Finland. European Journal of Public Health 2021;31(4):890-894",
+        "url": "https://doi.org/10.1093/eurpub/ckab074",
+        "note": "Register study of 233,211 people invited to the earlier Finnish bowel screening programme in 2004 to 2016, found through PubMed (PMID 34347069). 31.6% did not take part: 38.8% of men and 24.6% of women. About 80% of the people who did not take part in the first round also did not take part in the second. That programme used another stool test than the programme of 2022.",
+    },
+    "campaign_rule": {
+        "title": "Cancer Care Atlas proposal for a screening campaign, written by the team",
+        "url": None,
+        "note": "Our proposal for when a county runs a reminder campaign, who is in it and what the county does. The rules use the fields that a screening programme holds to send its invitations. No county and no data protection officer reviewed it. The size of the campaign is our estimate: Sotkanet gives the people who attended and their share of the invited. Code: backend/campaign.py.",
     },
     "hanna_2020": {
         "title": "Hanna TP, King WD, Thibodeau S, Jalink M, Paulin GA, Harvey-Jones E, O'Sullivan DE, Booth CM, Sullivan R, Aggarwal A. Mortality due to cancer treatment delay: systematic review and meta-analysis. BMJ 2020;371:m4087",
@@ -97,6 +132,26 @@ STATIC_SOURCES: dict[str, dict] = {
         "title": "Borras JM, Lievens Y, Dunscombe P, Coffey M, Malicki J, Corral J, Gasparotto C, Defourny N, Barton M, Verhoeven R, van Eycken L, Primic-Zakelj M, Trojanowski M, Strojan P, Grau C. The optimal utilization proportion of external beam radiotherapy in European countries: An ESTRO-HERO analysis. Radiotherapy and Oncology 2015;116:38-44",
         "url": "https://doi.org/10.1016/j.radonc.2015.04.018",
         "note": "Estimate for European countries, found through PubMed (PMID 25981052). Between 47.0% and 53.2% of new cancer patients need radiotherapy at least once. In most of the 24 countries with data, actual use was lower. The abstract gives no value for Finland.",
+    },
+    "tanderup_2016": {
+        "title": "Tanderup K, Fokdal LU, Sturdza A, Haie-Meder C, Mazeron R, van Limbergen E, and others. Effect of tumor dose, volume and overall treatment time on local control after radiochemotherapy including MRI guided brachytherapy of locally advanced cervical cancer. Radiotherapy and Oncology 2016;120:441-446",
+        "url": "https://doi.org/10.1016/j.radonc.2016.05.014",
+        "note": "Multicentre series (retroEMBRACE), found through PubMed (PMID 27350396). 488 patients. Longer overall treatment time went with worse local control (hazard ratio 1.023 per day). About 5 Gy more dose was needed to make up for one extra week. Not Finnish data.",
+    },
+    "thl_eshjono": {
+        "title": "THL, access to specialised health care: patients waiting for treatment by specialty and wellbeing services county (Sampo cube eshjono/jonotilanne)",
+        "url": "https://sampo.thl.fi/pivot/prod/fi/eshjono/jonotilanne/fact_eshjono_jonotilanne",
+        "note": "Open THL data, downloaded with data/fetch_thl_queues.py on 2026-11-14 for the six month-ends from April to September 2026. Non-urgent queues only: a patient with a cancer referral is often treated as urgent and is not in them. THL reports by provider, so HUS stands for the four Uusimaa counties and Helsinki. Counties code sub-specialties differently, so a county without a value may book the same work under another specialty.",
+    },
+    "rt_units": {
+        "title": "Radiotherapy units in Finland and the unit that serves each county, compiled by Cancer Care Atlas from each unit's own service page",
+        "url": "https://www.suomi.fi/palvelut/palvelupiste/oysin-sadehoidon-yksikko-pohjois-pohjanmaan-hyvinvointialue/6ef3eba4-7471-4c77-8f6d-578b809dfa37",
+        "note": "Compiled by hand on 2026-11-14. Each unit, and each county served from another county, links to its own source in data/radiotherapy_units.json. Units: HUS (all of Uusimaa), Tyks, Satasairaala, Vaasa, Tays, Lahti, Kotka, Lappeenranta, Jyväskylä, Kuopio, Joensuu and Oulu (the only unit in Northern Finland, so also Kainuu and Lapland). Served from another county: Kanta-Häme by Tays, South Ostrobothnia mainly by Vaasa, South Savo by Kuopio, Jyväskylä or Lappeenranta, Central Ostrobothnia mainly by Oulu and Vaasa. The distance is a straight line to the nearest of the county's units, not a travel time.",
+    },
+    "fast_forward": {
+        "title": "Murray Brunt A, Haviland JS, Wheatley DA, and others. Hypofractionated breast radiotherapy for 1 week versus 3 weeks (FAST-Forward): 5-year efficacy and late normal tissue effects results from a multicentre, non-inferiority, randomised, phase 3 trial. Lancet 2020;395:1613-1626",
+        "url": "https://doi.org/10.1016/S0140-6736(20)30932-6",
+        "note": "Randomised trial, found through PubMed (PMID 32580883). 4096 patients after surgery for early breast cancer. 26 Gy in five fractions over one week was non-inferior to 40 Gy in 15 fractions over three weeks for local relapse at five years, with similar normal tissue effects. UK data.",
     },
     "statfin_mortality": {
         "title": "Statistics Finland, causes of death (tables 13u5 and 11az) and population by age (table 11re)",

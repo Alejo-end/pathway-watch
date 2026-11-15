@@ -1,5 +1,5 @@
 {
- "_note": "Copied by hand from the NORDCAN 2.0 fact sheets (data version 9.6.1, read 2026-11-13). Cases are new cases per year, 2020-2024. surv5 is five-year relative survival in %, age-standardized with ICSS, diagnosed 2020-2024. Male breast cancer has no survival value in NORDCAN.",
+ "_note": "Copied by hand from the NORDCAN 2.0 fact sheets (data version 9.6.1, read 2026-11-13). Cases are new cases per year, 2020-2024. surv5 is five-year relative survival in %, age-standardized with ICSS, diagnosed 2020-2024. Male breast cancer has no survival value in NORDCAN. Checked a second time on 2026-11-14 against the fact sheets on the NORDCAN site: all 36 case and survival values agree. ci5 is the published 95% interval of surv5, copied in the same check.",
  "source": "nordcan",
  "period": "2020–2024",
  "url": "https://nordcan.iarc.who.int/en/factsheet/{site}/{country}",
@@ -9,31 +9,55 @@
    "finland-246": {
     "male": {
      "cases": 2222,
-     "surv5": 69.6
+     "surv5": 69.6,
+     "ci5": [
+      68.4,
+      70.8
+     ]
     },
     "female": {
      "cases": 1863,
-     "surv5": 72.8
+     "surv5": 72.8,
+     "ci5": [
+      71.7,
+      74.0
+     ]
     }
    },
    "sweden-752": {
     "male": {
      "cases": 3985,
-     "surv5": 71.7
+     "surv5": 71.7,
+     "ci5": [
+      70.9,
+      72.6
+     ]
     },
     "female": {
      "cases": 3486,
-     "surv5": 72.2
+     "surv5": 72.2,
+     "ci5": [
+      71.4,
+      73.1
+     ]
     }
    },
    "norway-578": {
     "male": {
      "cases": 2467,
-     "surv5": 72.2
+     "surv5": 72.2,
+     "ci5": [
+      71.1,
+      73.3
+     ]
     },
     "female": {
      "cases": 2305,
-     "surv5": 73.9
+     "surv5": 73.9,
+     "ci5": [
+      72.9,
+      75.0
+     ]
     }
    }
   },
@@ -46,7 +70,11 @@
     },
     "female": {
      "cases": 5059,
-     "surv5": 92.0
+     "surv5": 92.0,
+     "ci5": [
+      91.4,
+      92.6
+     ]
     }
    },
    "sweden-752": {
@@ -56,7 +84,11 @@
     },
     "female": {
      "cases": 7856,
-     "surv5": 93.4
+     "surv5": 93.4,
+     "ci5": [
+      92.9,
+      93.9
+     ]
     }
    },
    "norway-578": {
@@ -66,7 +98,11 @@
     },
     "female": {
      "cases": 4005,
-     "surv5": 91.6
+     "surv5": 91.6,
+     "ci5": [
+      90.8,
+      92.4
+     ]
     }
    }
   },
@@ -75,19 +111,31 @@
    "finland-246": {
     "female": {
      "cases": 200,
-     "surv5": 69.8
+     "surv5": 69.8,
+     "ci5": [
+      66.5,
+      73.3
+     ]
     }
    },
    "sweden-752": {
     "female": {
      "cases": 509,
-     "surv5": 78.4
+     "surv5": 78.4,
+     "ci5": [
+      76.5,
+      80.2
+     ]
     }
    },
    "norway-578": {
     "female": {
      "cases": 327,
-     "surv5": 77.1
+     "surv5": 77.1,
+     "ci5": [
+      74.7,
+      79.5
+     ]
     }
    }
   },
@@ -96,31 +144,55 @@
    "finland-246": {
     "male": {
      "cases": 1780,
-     "surv5": 17.9
+     "surv5": 17.9,
+     "ci5": [
+      16.7,
+      19.2
+     ]
     },
     "female": {
      "cases": 1214,
-     "surv5": 30.8
+     "surv5": 30.8,
+     "ci5": [
+      29.1,
+      32.5
+     ]
     }
    },
    "sweden-752": {
     "male": {
      "cases": 1999,
-     "surv5": 31.3
+     "surv5": 31.3,
+     "ci5": [
+      30.0,
+      32.7
+     ]
     },
     "female": {
      "cases": 2527,
-     "surv5": 38.9
+     "surv5": 38.9,
+     "ci5": [
+      37.7,
+      40.1
+     ]
     }
    },
    "norway-578": {
     "male": {
      "cases": 1753,
-     "surv5": 30.8
+     "surv5": 30.8,
+     "ci5": [
+      29.4,
+      32.3
+     ]
     },
     "female": {
      "cases": 1701,
-     "surv5": 38.4
+     "surv5": 38.4,
+     "ci5": [
+      37.1,
+      39.9
+     ]
     }
    }
   },
@@ -129,31 +201,55 @@
    "finland-246": {
     "male": {
      "cases": 712,
-     "surv5": 12.1
+     "surv5": 12.1,
+     "ci5": [
+      10.6,
+      13.9
+     ]
     },
     "female": {
      "cases": 691,
-     "surv5": 13.6
+     "surv5": 13.6,
+     "ci5": [
+      12.0,
+      15.4
+     ]
     }
    },
    "sweden-752": {
     "male": {
      "cases": 866,
-     "surv5": 17.3
+     "surv5": 17.3,
+     "ci5": [
+      15.9,
+      18.9
+     ]
     },
     "female": {
      "cases": 852,
-     "surv5": 17.9
+     "surv5": 17.9,
+     "ci5": [
+      16.4,
+      19.5
+     ]
     }
    },
    "norway-578": {
     "male": {
      "cases": 524,
-     "surv5": 18.7
+     "surv5": 18.7,
+     "ci5": [
+      16.7,
+      20.8
+     ]
     },
     "female": {
      "cases": 497,
-     "surv5": 20.0
+     "surv5": 20.0,
+     "ci5": [
+      18.0,
+      22.3
+     ]
     }
    }
   },
@@ -162,31 +258,55 @@
    "finland-246": {
     "male": {
      "cases": 412,
-     "surv5": 14.4
+     "surv5": 14.4,
+     "ci5": [
+      12.5,
+      16.6
+     ]
     },
     "female": {
      "cases": 179,
-     "surv5": 12.5
+     "surv5": 12.5,
+     "ci5": [
+      9.9,
+      15.8
+     ]
     }
    },
    "sweden-752": {
     "male": {
      "cases": 590,
-     "surv5": 25.8
+     "surv5": 25.8,
+     "ci5": [
+      23.9,
+      27.9
+     ]
     },
     "female": {
      "cases": 275,
-     "surv5": 23.6
+     "surv5": 23.6,
+     "ci5": [
+      21.1,
+      26.4
+     ]
     }
    },
    "norway-578": {
     "male": {
      "cases": 249,
-     "surv5": 24.5
+     "surv5": 24.5,
+     "ci5": [
+      21.4,
+      28.0
+     ]
     },
     "female": {
      "cases": 147,
-     "surv5": 25.9
+     "surv5": 25.9,
+     "ci5": [
+      22.1,
+      30.3
+     ]
     }
    }
   }

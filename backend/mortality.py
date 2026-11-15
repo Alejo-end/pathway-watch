@@ -75,6 +75,18 @@ class Mortality:
                     total += n / nat_pop[age] * own.get(age, 0)
         return total
 
+    def expected_share(self, cause: str, county: str) -> float | None:
+        """The share of Finland's deaths from one cancer that the county's age structure predicts.
+
+        It is the county's expected deaths divided by the national deaths, over the pooled years. A county
+        with many old people gets a larger share than its share of the population. None for an unknown cause.
+        """
+        if cause not in self.causes:
+            return None
+        national = sum(self._expected(cause, NATIONAL, y) for y in self.years)
+        own = sum(self._expected(cause, county, y) for y in self.years)
+        return own / national if national and own else None
+
     def smr(self, cause: str, county: str) -> Smr:
         obs = sum(self._observed(cause, county, y) for y in self.years)
         exp = sum(self._expected(cause, county, y) for y in self.years)

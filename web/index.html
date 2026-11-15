@@ -3,281 +3,917 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Pathway Watch</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400..900&display=swap" rel="stylesheet">
+<title>Cancer Care Atlas</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script>try { const t = new URLSearchParams(location.search).get("theme") || localStorage.getItem("pw-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
+<link href="/fonts/fonts.css" rel="stylesheet">
 <style>
-/* Paper white, true black, one cobalt for action and "better", one signal red for "worse". */
+/* A clinical workstation look: a navy bar, quiet grey surfaces, one blue for action and "better",
+   one orange for "worse". Orange against blue stays readable with red-green colour blindness. */
 :root {
-  --bg: #ffffff; --panel: #ffffff; --ink: #000000; --muted: #5c5c5c; --line: #d9d9d9; --rule: #000000;
-  --accent: #0a3cdc; --on-accent: #ffffff; --chip: #eef1fd;
-  --below: #d4003c; --below-soft: #f3aabd; --above: #0a3cdc; --above-soft: #aebcf4;
-  --near: #e4e4e4; --nodata: #f4f4f4; --warn-bg: #f4f4f4; --warn-line: #000000;
-  --font: "Schibsted Grotesk", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --bg: #f2f4f7; --surface: #ffffff; --ink: #14202e; --muted: #4f5d70; --line: #d6dce4; --line-strong: #a9b4c2;
+  --bar: #0f2740; --on-bar: #ffffff; --on-bar-muted: #b9c6d6;
+  --accent: #0b5cad; --on-accent: #ffffff; --chip: #e8f0fa;
+  --below: #b8440d; --on-below: #ffffff; --below-soft: #f3bd97; --below-bg: #fdf1e8;
+  --above: #1c62b4; --above-soft: #a8c6ea;
+  --near: #e1e6ec; --nodata: #eef1f4; --seg-patient: #5d6b7e; --on-seg: #ffffff;
+  --font: "IBM Plex Sans", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --shadow: 0 1px 2px rgba(15, 39, 64, .06);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #000000; --panel: #000000; --ink: #ffffff; --muted: #a6a6a6; --line: #333333; --rule: #ffffff;
-    --accent: #6f8dff; --on-accent: #000000; --chip: #141b3a;
-    --below: #ff4d7d; --below-soft: #7a1f3a; --above: #6f8dff; --above-soft: #263a8c;
-    --near: #2e2e2e; --nodata: #1a1a1a; --warn-bg: #141414; --warn-line: #ffffff;
+    --bg: #0e151e; --surface: #16202c; --ink: #e9eef4; --muted: #a7b4c4; --line: #2a3746; --line-strong: #4a5a6d;
+    --bar: #0a1018; --on-bar: #ffffff; --on-bar-muted: #a7b4c4;
+    --accent: #74aef2; --on-accent: #0b1622; --chip: #1c2f47;
+    --below: #f0935a; --on-below: #1d1107; --below-soft: #7b4a2b; --below-bg: #2a1e16;
+    --above: #74aef2; --above-soft: #2f5283;
+    --near: #2b3848; --nodata: #1b2531; --seg-patient: #8d9bad; --on-seg: #0b1622;
+    --shadow: none;
   }
 }
+:root[data-theme="dark"] {
+  --bg: #0e151e; --surface: #16202c; --ink: #e9eef4; --muted: #a7b4c4; --line: #2a3746; --line-strong: #4a5a6d;
+  --bar: #0a1018; --on-bar: #ffffff; --on-bar-muted: #a7b4c4;
+  --accent: #74aef2; --on-accent: #0b1622; --chip: #1c2f47;
+  --below: #f0935a; --on-below: #1d1107; --below-soft: #7b4a2b; --below-bg: #2a1e16;
+  --above: #74aef2; --above-soft: #2f5283;
+  --near: #2b3848; --nodata: #1b2531; --seg-patient: #8d9bad; --on-seg: #0b1622;
+  --shadow: none;
+}
+/* The bars are full width, and their content starts on the same edge as the page column. */
+:root { --gutter: max(24px, calc((100% - 1560px) / 2 + 24px)); }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.45 var(--font); -webkit-font-smoothing: antialiased; }
-:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-a { color: var(--accent); }
+html { scroll-behavior: smooth; overflow-x: clip; }
+body { margin: 0; overflow-x: clip; background: var(--bg); color: var(--ink); font: 400 16px/1.55 var(--font); font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+a { color: var(--accent); text-underline-offset: 2px; }
+h1, h2, h3, p { margin: 0; }
 
-/* Top bar: wordmark and what the tool is for. */
-.topbar { display: flex; align-items: baseline; gap: 8px 20px; flex-wrap: wrap; padding: 14px 28px; border-bottom: 3px solid var(--rule); }
-.topbar .mark { font-weight: 800; font-size: 20px; letter-spacing: -0.02em; }
-.topbar .tag { color: var(--muted); font-size: 14px; }
+/* Application bar. */
+.appbar { display: flex; align-items: center; gap: 10px 16px; flex-wrap: wrap; padding: 12px var(--gutter); background: var(--bar); color: var(--on-bar); }
+.appbar svg { flex: none; }
+.appbar .brandmark { filter: drop-shadow(0 1px 0 rgba(0, 0, 0, .16)); }
+.appbar .mark { font-weight: 600; font-size: 18px; letter-spacing: .01em; }
+.appbar .tag { color: var(--on-bar-muted); font-size: 15px; flex: 1 1 260px; }
+.appbar .tools { display: flex; gap: 8px; }
+.appbar button { font: 500 14px var(--font); color: var(--on-bar); background: transparent; border: 1px solid rgba(255, 255, 255, .35); border-radius: 6px; padding: 8px 14px; min-height: 38px; cursor: pointer; }
+.appbar button:hover { background: rgba(255, 255, 255, .12); }
 
-/* National findings: an inverted band, four columns. */
-.headlines { display: grid; grid-template-columns: repeat(4, 1fr); background: var(--ink); color: var(--bg); }
-.hl-card { padding: 18px 28px 20px; font-size: 13.5px; line-height: 1.4; border-left: 1px solid color-mix(in srgb, var(--bg) 25%, transparent); }
-.hl-card:first-child { border-left: 0; }
-.hl-card .k { font-size: 13px; font-weight: 600; opacity: .7; }
-.hl-card .n { font-size: clamp(26px, 2.6vw, 38px); font-weight: 800; letter-spacing: -0.03em; line-height: 1.05; margin: 2px 0 8px; }
-.hl-card sup.cite a { color: var(--bg); }
-@media (max-width: 1100px) { .headlines { grid-template-columns: 1fr 1fr; } .hl-card:nth-child(3) { border-left: 0; } .hl-card { border-top: 1px solid color-mix(in srgb, var(--bg) 25%, transparent); } }
-@media (max-width: 600px) { .headlines { grid-template-columns: 1fr; } .hl-card { border-left: 0; padding: 14px 16px; } }
+.appbar .pick { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--on-bar-muted); }
+.appbar select { font: 500 15px var(--font); color: var(--on-bar); border: 1px solid rgba(255, 255, 255, .35); border-radius: 6px; padding: 7px 34px 7px 12px; min-height: 38px; appearance: none; -webkit-appearance: none; cursor: pointer;
+  background: rgba(255, 255, 255, .1) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23ffffff' stroke-width='2'/%3E%3C/svg%3E") no-repeat right 12px center; }
+.appbar select:hover { background-color: rgba(255, 255, 255, .18); }
+.appbar option { color: #14202e; background: #ffffff; }
+.appbar .tools { margin-left: auto; }
+@media (max-width: 1300px) { .appbar .tag { display: none; } }
 
-main { display: grid; grid-template-columns: minmax(300px, 400px) minmax(0, 1fr); gap: 0 48px; padding: 0 28px 40px; max-width: 1360px; margin: 0 auto; }
-@media (max-width: 900px) { main { grid-template-columns: 1fr; padding: 0 16px 32px; } .topbar { padding: 12px 16px; } }
-.stack { min-width: 0; }
-@media (min-width: 901px) { .mapcol { position: sticky; top: 0; align-self: start; max-height: 100vh; overflow: auto; } }
+/* Six views, one at a time. A view with several parts has a second row of smaller buttons. */
+.tabs { display: flex; flex-wrap: wrap; gap: 2px; border-bottom: 1px solid var(--line-strong); }
+.tabs button { font: 500 16px var(--font); color: var(--muted); background: none; border: 0; padding: 10px 11px 11px; min-height: 44px; cursor: pointer; white-space: nowrap; border-radius: 6px 6px 0 0; }
+.tabs button:hover { color: var(--ink); background: var(--near); }
+.tabs button[aria-current="page"] { color: var(--accent); box-shadow: inset 0 -3px 0 var(--accent); font-weight: 600; }
+.subtabs { display: flex; gap: 6px; flex-wrap: wrap; padding: 10px 0 0; }
+.subtabs button { font: 500 14px var(--font); color: var(--ink); background: var(--surface); border: 1px solid var(--line-strong); border-radius: 999px; padding: 6px 14px; min-height: 34px; cursor: pointer; }
+.subtabs button:hover { border-color: var(--accent); color: var(--accent); }
+.subtabs button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.views { padding-top: 12px; }
+.views > :not([hidden]) { animation: viewin .14s ease-out; }
+@keyframes viewin { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .views > * { animation: none !important; } html { scroll-behavior: auto; } }
+[hidden] { display: none !important; }
 
-/* A section starts with a heavy rule and a plain heading. No cards. */
-.panel { border-top: 3px solid var(--rule); padding: 14px 0 34px; }
-.panel h2 { font-size: 21px; font-weight: 700; letter-spacing: -0.015em; line-height: 1.2; margin: 0 0 14px; max-width: 34ch; }
+.wrap { max-width: 1560px; width: 100%; margin: 0 auto; padding: 16px 24px 24px; }
+.eyebrow { font-size: 13px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+/* Findings for Finland: four cards. */
+.headlines { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.hl-card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; font-size: 15px; box-shadow: var(--shadow); }
+.hl-card .k { font-size: 13px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.hl-card .n { font-size: 28px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.2; margin: 4px 0 8px; }
+.hl-card .more { margin-top: 8px; color: var(--muted); }
+details.fold > summary { cursor: pointer; font-weight: 500; color: var(--accent); width: max-content; padding: 4px 0; }
+@media (max-width: 600px) { .headlines { grid-template-columns: 1fr; } }
+
+main { display: grid; grid-template-columns: minmax(320px, 430px) minmax(0, 1fr); min-width: 0; gap: 0 20px; align-items: start; }
+.stack, .viewcol, .views { min-width: 0; }
+.mapnote { font-size: 13px; color: var(--muted); padding: 0 4px; }
+/* Desktop is a clinical workstation, not a long web page: the app bar, county map and view
+   navigation are fixed. Only the reading rail on the right scrolls. The map is deliberately
+   not a second scroll area; it scales to its available column. */
+@media (min-width: 1101px) and (min-height: 640px) {
+  html, body { height: 100%; }
+  body { display: flex; flex-direction: column; overflow: hidden; }
+  .wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  /* The base layout uses align-items:start for normal documents. Here the two rails must
+     stretch to the bounded workstation height, otherwise .views grows with its content and
+     has nothing to scroll. */
+  main { flex: 1; min-height: 0; grid-template-rows: minmax(0, 1fr); align-items: stretch; }
+  .mapcol { min-height: 0; max-height: 100%; overflow: hidden; }
+  .viewcol { min-height: 0; display: flex; flex-direction: column; }
+  .views { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scrollbar-gutter: stable; padding-right: 4px; }
+  .views > :last-child, .views > .grid2 > .panel { margin-bottom: 0; }
+}
+@media (max-width: 1100px) { main { grid-template-columns: 1fr !important; } }
+@media (max-width: 800px) {
+  .tabs { gap: 0; }
+  .tabs button, .tabs button:nth-child(n+4) { flex: 1 1 33.333%; min-width: 0; margin-left: 0; font-size: 15px; padding-inline: 6px; }
+  .mapgrid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  #mapsvg { display: flex; justify-content: center; min-width: 0; }
+  .readout { max-width: 100%; overflow-wrap: anywhere; }
+}
+@media (max-width: 900px) { main { grid-template-columns: 1fr; } :root { --gutter: 16px; } .wrap { padding: 16px 16px 32px; } }
+@media (max-width: 560px) {
+  /* A phone is a distinct composition: controls stack, the map explains itself below the graphic,
+     and nothing relies on a horizontal strip or clipped copy. */
+  .appbar { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 10px 12px; padding: 12px 16px; }
+  .appbar .mark { min-width: 0; font-size: 20px; }
+  .appbar .pick { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1.25fr); width: 100%; min-width: 0; gap: 6px; }
+  .appbar select { width: 100%; min-width: 0; padding-left: 10px; padding-right: 28px; }
+  .appbar .tools { grid-column: 1 / -1; margin-left: 0; display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
+  .appbar .tools button { min-width: 0; padding-inline: 8px; }
+  .panel { padding: 18px 16px 20px; }
+  .maptoggle { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mapgrid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  #mapsvg { display: flex; justify-content: center; min-width: 0; }
+  #map svg { height: min(250px, 68vw); }
+  .readout { max-width: 100%; overflow-wrap: anywhere; }
+}
+
+/* Every section is one card. */
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px 24px 22px; margin-bottom: 16px; box-shadow: var(--shadow); }
+.panel h2 { font-size: 20px; font-weight: 600; line-height: 1.3; margin-bottom: 10px; max-width: 80ch; }
 .panel h2 sup.cite { font-weight: 400; }
-.panel.first { border-top: 0; padding-top: 28px; }
+h1.query { min-width: 0; overflow-wrap: anywhere; font-size: clamp(26px, 2.6vw, 34px); font-weight: 600; letter-spacing: -0.01em; line-height: 1.2; margin: 2px 0 16px; }
 
-/* The question, as a sentence you can edit: "Bowel cancer in Päijät-Häme". */
-.query { font-size: clamp(34px, 5.2vw, 76px); font-weight: 800; letter-spacing: -0.04em; line-height: 1.02; margin: 0 0 18px; }
-.query select { font: inherit; letter-spacing: inherit; color: var(--accent); background: transparent; border: 0; border-bottom: .07em solid var(--accent);
-  border-radius: 0; padding: 0 .1em 0 0; margin: 0; appearance: none; -webkit-appearance: none; cursor: pointer; max-width: 100%; }
-.query select:hover { background: var(--chip); }
-.query option { font-size: 16px; font-weight: 400; color: #000; }
-#sizer { position: absolute; visibility: hidden; white-space: pre; }
+/* The four numbers a reader needs first. */
+.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.kpi { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px 14px; border-top: 4px solid var(--line-strong); }
+.kpi.below { border-top-color: var(--below); } .kpi.above { border-top-color: var(--above); }
+.kpi .l { font-size: 14px; font-weight: 600; color: var(--muted); }
+.kpi .v { font-size: 32px; font-weight: 600; line-height: 1.2; margin: 2px 0; white-space: nowrap; }
+.kpi .v small { font-size: 16px; font-weight: 500; }
+.kpi.below .v { color: var(--below); } .kpi.above .v { color: var(--above); }
+.kpi .s { font-size: 14px; }
+@media (max-width: 1200px) { .kpis { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 420px) { .kpis { grid-template-columns: 1fr; } }
 
-/* The care pathway drawn as a line with four stops. The stops that the question is about are marked. */
-.route { display: grid; grid-template-columns: repeat(4, 1fr); margin: 6px 0 4px; }
-.stop { position: relative; padding-top: 26px; font-size: 14px; font-weight: 600; color: var(--muted); padding-right: 10px; }
-.stop::before { content: ""; position: absolute; left: 0; right: 0; top: 8px; height: 6px; background: var(--ink); }
-.stop:last-child::before { right: auto; width: 0; }
-.stop::after { content: ""; position: absolute; left: 0; top: 0; width: 22px; height: 22px; border-radius: 50%; background: var(--bg); border: 5px solid var(--ink); }
-.stop.hit { color: var(--below); }
-.stop.hit::after { background: var(--below); border-color: var(--below); }
+/* The care pathway: four numbered stops on one line. A filled stop is one that the question is about. */
+.findgrid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(300px, 1fr); gap: 28px; margin-top: 16px; align-items: start; }
+@media (max-width: 1250px) { .findgrid { grid-template-columns: 1fr; } }
+.pathbox { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 16px 18px 18px; }
+.route { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); min-width: 0; overflow: clip; margin: 16px 0 12px; counter-reset: stop; }
+.stop { min-width: 0; overflow-wrap: anywhere; counter-increment: stop; position: relative; text-align: center; padding: 38px 6px 0; font-size: 15px; font-weight: 500; line-height: 1.3; color: var(--muted); }
+.stop::before { content: ""; position: absolute; left: 50%; width: 100%; top: 13px; height: 4px; background: var(--line-strong); }
+.stop:last-child::before { display: none; }
+.stop::after { content: counter(stop); position: absolute; z-index: 1; left: 50%; top: 0; width: 30px; height: 30px; margin-left: -15px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 14px; font-weight: 600; line-height: 1; background: var(--surface); color: var(--muted); border: 2px solid var(--line-strong); }
+.stop small { display: block; font-size: 13px; font-weight: 400; min-height: 1.3em; }
+.stop .stop-icon { display: block; width: 17px; height: 17px; margin: 4px auto 1px; color: var(--muted); }
+.stop.hit .stop-icon, .stop.warn .stop-icon { color: var(--below); }
+.stop .stop-icon svg { width: 100%; height: 100%; display: block; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.stop.hit, .stop.warn { color: var(--ink); font-weight: 600; }
+.stop.hit::after { background: var(--below); border-color: var(--below); color: var(--on-below); }
 .stop.seg::before { background: var(--below); }
-.stop.warn { color: var(--ink); }
-.stop.warn::after { border-color: var(--below); }
-.verdict { font-size: 15px; margin: 12px 0 0; }
-.verdict b { font-weight: 700; }
-.badge { display: inline-block; font-size: 13px; font-weight: 600; padding: 2px 10px; border-radius: 999px; border: 2px solid var(--ink); margin-left: 6px; white-space: nowrap; }
-.badge.high { background: var(--ink); color: var(--bg); }
+.stop.warn::after { border-color: var(--below); color: var(--below); }
+.verdict { font-size: 16px; margin-top: 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.verdict b { font-weight: 600; }
+.badge { font-size: 14px; font-weight: 500; padding: 3px 12px; border-radius: 999px; border: 1px solid var(--line-strong); white-space: nowrap; }
+.badge.high { background: var(--ink); border-color: var(--ink); color: var(--surface); }
 
-ol.summary { margin: 22px 0 0; padding: 0; list-style: none; counter-reset: s; font-size: clamp(18px, 1.5vw, 22px); line-height: 1.38; font-weight: 500; letter-spacing: -0.01em; max-width: 62ch; }
-ol.summary li { counter-increment: s; position: relative; padding: 12px 0 12px 44px; border-top: 1px solid var(--line); }
-ol.summary li::before { content: counter(s); position: absolute; left: 0; top: 12px; font-weight: 800; }
-sup.cite { font-size: .62em; margin-left: 1px; font-weight: 600; }
-sup.cite a { text-decoration: none; margin-left: 2px; }
+ol.summary { margin: 0; padding: 0; list-style: none; counter-reset: s; font-size: 18px; line-height: 1.5; }
+ol.summary li { counter-increment: s; position: relative; padding: 14px 0 14px 46px; border-top: 1px solid var(--line); }
+ol.summary li:first-child { border-top: 0; padding-top: 2px; } ol.summary li:first-child::before { top: 2px; }
+ol.summary li::before { content: counter(s); position: absolute; left: 0; top: 14px; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+  font-size: 15px; font-weight: 600; line-height: 1; background: var(--chip); color: var(--accent); }
+sup.cite { font-size: .7em; font-weight: 500; line-height: 0; }
+sup.cite a { text-decoration: none; margin-left: 2px; padding: 0 1px; }
 sup.cite a:hover { text-decoration: underline; }
-.writer, .caveat, .removed { font-size: 13.5px; color: var(--muted); max-width: 78ch; }
+.writer, .caveat, .removed, .note { font-size: 14px; color: var(--muted); max-width: 84ch; }
 .writer { margin-top: 12px; }
-.caveat { margin: 6px 0 0; }
+.caveat { margin-top: 8px; }
+.wide { max-width: none; }
 
-/* First action: the one filled block on the page. */
-.action { background: var(--accent); color: var(--on-accent); padding: 22px 24px 24px; }
-.action .what { font-size: clamp(22px, 2.3vw, 32px); font-weight: 800; letter-spacing: -0.025em; line-height: 1.12; margin: 12px 0 12px; max-width: 30ch; }
-.action .meta { font-size: 14px; opacity: .9; max-width: 78ch; }
-.action .detail { max-width: 70ch; }
-.action sup.cite a { color: var(--on-accent); }
-.action .line { background: var(--on-accent); color: var(--accent); }
-/* A roadmap measure number, shown like a line number on a departure board. */
-.line { display: inline-block; min-width: 52px; text-align: center; font-weight: 800; font-size: 15px; padding: 3px 8px; border-radius: 6px; background: var(--accent); color: var(--on-accent); }
-.line.none { background: var(--near); color: var(--ink); }
+/* First action: the plan a county can start, and the buttons to take it to a meeting. */
+#act { border-left: 5px solid var(--accent); }
+.action .meta { font-size: 15px; color: var(--muted); max-width: 84ch; }
+.action .what { font-size: clamp(21px, 1.9vw, 26px); font-weight: 600; line-height: 1.3; margin: 6px 0 10px; max-width: 62ch; }
+.action .detail { max-width: 76ch; margin-top: 6px; }
+.actgrid { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(260px, 1fr); gap: 32px; margin-top: 12px; align-items: start; }
+@media (max-width: 1250px) { .actgrid { grid-template-columns: 1fr; gap: 8px; } }
+/* Three steps on one vertical line, each with its number. */
+.plan { list-style: none; margin: 0; padding: 0; counter-reset: p; }
+.plan li { counter-increment: p; position: relative; padding: 0 0 12px 50px; }
+.plan li:last-child { padding-bottom: 0; }
+.plan li::before { content: counter(p); position: absolute; left: 0; top: 0; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;
+  font-weight: 600; line-height: 1; background: var(--chip); color: var(--accent); border: 2px solid var(--accent); }
+.plan li:first-child::before { background: var(--accent); color: var(--on-accent); }
+.plan li::after { content: ""; position: absolute; left: 16px; top: 40px; bottom: 4px; width: 2px; background: var(--line-strong); }
+.plan li:last-child::after { display: none; }
+.plan .when { font-size: 13px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
+.plan .t { font-weight: 600; font-size: 17px; margin: 0 0 4px; line-height: 1.35; }
+.plan .fine { display: block; font-size: 14px; color: var(--muted); margin-top: 6px; }
+/* Screening campaign: the verdict, then who is in it and what the county does. */
+.verdictbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 4px 0 14px; }
+.verdictbar h2 { margin: 0; }
+#campaign .kpis { margin-bottom: 10px; }
+.limit { margin: 0 0 14px; padding: 8px 12px; border-left: 4px solid var(--below); background: var(--below-bg); color: var(--ink); }
+#campaign .kpi .v { font-size: 28px; }
+#campaign .sub { margin-top: 0; }
+#campaign .plan { margin-top: 4px; }
+.yes { color: var(--accent); font-weight: 600; white-space: nowrap; }
+.actside { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 16px 18px; }
+.action dl { margin: 0; }
+.action dt { font-size: 13px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.action dd { margin: 2px 0 14px; }
+.action dd:last-child { margin-bottom: 0; }
+.cta { display: grid; gap: 8px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); }
+.cta .btn { justify-content: center; }
+.toplan { margin-top: 14px; }
+.btn { font: 500 16px var(--font); display: inline-flex; align-items: center; min-height: 44px; padding: 10px 18px; border-radius: 6px; border: 1px solid var(--accent); background: var(--surface); color: var(--accent); cursor: pointer; text-decoration: none; }
+.btn:hover { background: var(--chip); }
+.btn.primary { background: var(--accent); color: var(--on-accent); }
+.btn.primary:hover { filter: brightness(1.1); }
+#brieftext { display: none; width: 100%; min-height: 180px; margin-top: 12px; font: 14px/1.5 var(--font); padding: 10px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--bg); color: var(--ink); }
+.level { font-weight: 600; color: var(--ink); }
+/* A roadmap measure number. */
+.line { display: inline-block; min-width: 54px; text-align: center; font-weight: 600; font-size: 14px; padding: 3px 8px; border-radius: 6px; background: var(--chip); color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); }
+.line.none { background: var(--near); color: var(--ink); border-color: transparent; }
 .rows { list-style: none; margin: 0; padding: 0; }
 .rows li { display: grid; grid-template-columns: 64px 1fr; gap: 4px 14px; padding: 12px 0; border-bottom: 1px solid var(--line); align-items: start; }
-.rows li > div { max-width: 78ch; }
-.rows small { display: block; color: var(--muted); font-size: 13.5px; margin-top: 2px; }
-.more { margin-top: 4px; }
-.action dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 16px 0 0; font-size: 15px; max-width: 80ch; }
-.action dt { font-weight: 700; }
-.action dd { margin: 0; }
-.level { font-weight: 700; }
+.rows li:last-child { border-bottom: 0; }
+.rows.tight li { padding: 8px 0; }
+.rows.two { column-count: 2; column-gap: 32px; } .rows.two li { break-inside: avoid; }
+@media (max-width: 1250px) { .rows.two { column-count: 1; } }
+.rows li > div { max-width: 84ch; }
+.rows small { display: block; color: var(--muted); font-size: 14px; margin-top: 3px; }
+.rows small b { color: var(--ink); font-weight: 600; }
+
 /* National ranking: one row per county, the county name is the button. */
-.rank { list-style: none; margin: 0; padding: 0; }
-.rank li { display: grid; grid-template-columns: 64px minmax(120px, 190px) 1fr; gap: 4px 14px; padding: 10px 0; border-bottom: 1px solid var(--line); align-items: center; }
+.rank { list-style: none; margin: 0; padding: 0; column-count: 2; column-gap: 28px; }
+@media (max-width: 1250px) { .rank { column-count: 1; } }
+.rank li { break-inside: avoid; display: grid; grid-template-columns: 60px minmax(110px, 150px) 1fr; gap: 4px 12px; padding: 7px 8px; border-bottom: 1px solid var(--line); align-items: center; border-radius: 6px; }
 .rank li.sel { background: var(--chip); }
-.rank button { font: inherit; font-weight: 700; text-align: left; background: none; border: 0; padding: 0; color: var(--ink); cursor: pointer; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
-.rank .sig { font-size: 13.5px; color: var(--muted); }
+.rank button { font: inherit; font-weight: 600; text-align: left; background: none; border: 0; padding: 4px 0; color: var(--accent); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.rank .sig { font-size: 14px; color: var(--muted); }
 .rank .sig b { color: var(--below); font-weight: 600; }
 .dots { letter-spacing: 3px; color: var(--below); font-size: 15px; }
 @media (max-width: 700px) { .rank li { grid-template-columns: 64px 1fr; } .rank .sig { grid-column: 2; } }
 
-.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 40px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
 @media (max-width: 1100px) { .grid2 { grid-template-columns: 1fr; } }
 #chart svg { width: 100%; height: auto; display: block; }
-#chart text { fill: var(--muted); font-size: 11px; font-family: var(--font); }
-.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--muted); margin-top: 10px; }
-.legend i { display: inline-block; width: 12px; height: 12px; vertical-align: -1px; margin-right: 5px; }
+#chart text { fill: var(--muted); font-size: 12px; font-family: var(--font); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 14px; color: var(--muted); margin-top: 12px; }
+.legend i { display: inline-block; width: 14px; height: 14px; border-radius: 3px; vertical-align: -2px; margin-right: 6px; }
 
-.sim .big, .bignum { font-size: clamp(52px, 6vw, 88px); font-weight: 800; letter-spacing: -0.05em; line-height: .95; }
+.sim .big, .bignum { font-size: clamp(44px, 4.4vw, 60px); font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; color: var(--accent); }
 .sim input[type=range] { width: 100%; accent-color: var(--accent); margin: 16px 0 8px; height: 28px; }
-.sim .note { font-size: 13.5px; color: var(--muted); }
 
 /* Map */
-#map { padding-top: 28px; border-top: 0; }
-#map svg { width: 100%; height: auto; max-height: 56vh; display: block; margin: 0 auto; }
-#map path { stroke: var(--bg); stroke-width: .8; cursor: pointer; }
-#map path:hover { opacity: .75; }
-#map path.sel { stroke: var(--ink); stroke-width: 3; }
+#map h2 { font-size: 17px; margin-bottom: 10px; }
+.mapgrid { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 16px; align-items: center; }
+#map svg { height: clamp(250px, 46vh, 410px); width: auto; max-width: 100%; display: block; }
+#map path { stroke: var(--surface); stroke-width: .8; cursor: pointer; outline: none; }
+#map path:hover, #map path:focus-visible { stroke: var(--ink); stroke-width: 1.6; }
 #map path.low { stroke-dasharray: 2 2; stroke: var(--muted); }
+#map path.sel { stroke: var(--ink); stroke-width: 3; stroke-dasharray: none; }
 /* One control, four choices: a segmented switch. */
-.maptoggle { display: grid; grid-template-columns: repeat(4, 1fr); border: 2px solid var(--ink); border-radius: 999px; padding: 2px; margin-bottom: 14px; }
-.maptoggle button { font: inherit; font-size: 13.5px; font-weight: 600; line-height: 1.1; padding: 8px 4px; border: 0; border-radius: 999px; background: transparent; color: var(--ink); cursor: pointer; }
-.maptoggle button.on { background: var(--ink); color: var(--bg); }
+.maptoggle { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; border: 1px solid var(--line-strong); border-radius: 8px; padding: 3px; margin-bottom: 14px; background: var(--bg); }
+.maptoggle button { font: 500 14px/1.15 var(--font); padding: 9px 4px; min-height: 40px; border: 0; border-radius: 6px; background: transparent; color: var(--ink); cursor: pointer; }
+.maptoggle button.on { background: var(--accent); color: var(--on-accent); }
 .maptoggle button:disabled { cursor: not-allowed; }
-#tip { position: fixed; pointer-events: none; background: var(--ink); color: var(--bg); font-size: 13px; padding: 8px 10px; display: none; z-index: 5; }
+/* What the map says about the chosen county, in words. */
+.readout { padding: 10px 14px; border: 1px solid var(--line); border-left: 5px solid var(--line-strong); border-radius: 6px; font-size: 15px; }
+.readout b { font-weight: 600; }
+.readout .count { display: block; color: var(--muted); font-size: 14px; margin-top: 4px; }
+#legend { margin-top: 14px; font-size: 14px; color: var(--muted); }
+.scale { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; margin: 4px 0 8px; font-size: 13px; line-height: 1.25; text-align: center; }
+.scale i { display: block; height: 10px; margin-bottom: 4px; }
+.scale span:first-child i { border-radius: 3px 0 0 3px; } .scale span:last-child i { border-radius: 0 3px 3px 0; }
+.dash i { display: inline-block; width: 14px; height: 14px; border: 1px dashed var(--muted); border-radius: 3px; vertical-align: -2px; margin-right: 6px; }
+details.fold p { margin-top: 2px; }
+#tip { position: fixed; pointer-events: none; background: var(--ink); color: var(--surface); font-size: 14px; line-height: 1.45; padding: 8px 12px; border-radius: 6px; display: none; z-index: 5; max-width: 300px; }
 
 table.g3 { width: 100%; border-collapse: collapse; font-size: 15px; }
-table.g3 td.num, .bars > span:nth-child(3n) { font-variant-numeric: tabular-nums; }
-table.g3 th, table.g3 td { text-align: left; padding: 9px 10px 9px 0; border-bottom: 1px solid var(--line); }
-table.g3 th { font-size: 13px; color: var(--muted); font-weight: 600; border-bottom: 2px solid var(--ink); }
-.pill { font-size: 13px; font-weight: 600; padding: 1px 9px; border-radius: 999px; white-space: nowrap; }
-.pill.worse { background: var(--below); color: #fff; } .pill.better { background: var(--above); color: var(--on-accent); } .pill.near { background: var(--near); }
-.target { margin-top: 14px; font-size: 17px; font-weight: 500; max-width: 70ch; }
-.sub { font-size: 16px; font-weight: 700; margin: 26px 0 8px; }
+table.g3 th, table.g3 td { text-align: left; padding: 8px 12px 8px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.g3 th { font-size: 14px; color: var(--muted); font-weight: 600; border-bottom: 2px solid var(--line-strong); }
+.pill { font-size: 14px; font-weight: 500; padding: 2px 10px; border-radius: 999px; white-space: nowrap; }
+.pill.worse { background: var(--below); color: var(--on-below); } .pill.better { background: var(--above); color: var(--on-accent); } .pill.near { background: var(--near); }
+.target { margin-top: 14px; font-size: 17px; max-width: 76ch; }
+.sub { font-size: 16px; font-weight: 600; margin: 24px 0 8px; }
+.split2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 32px; align-items: start; }
+@media (max-width: 1250px) { .split2 { grid-template-columns: 1fr; } }
+.split2 .sub:first-child { margin-top: 0; }
+.queues { margin-top: 18px; }
+.queues td small { display: block; color: var(--muted); font-size: 12px; font-weight: 400; }
+.queues tr.me td { font-weight: 600; }
+.split.mirror { grid-template-columns: 1.5fr 1fr; gap: 12px 32px; }
+.mirror .bars { grid-template-columns: 108px 1fr 40px; }
 .split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 40px; margin: 12px 0; }
 @media (max-width: 700px) { .split { grid-template-columns: 1fr; } }
-.bar { height: 14px; background: var(--near); position: relative; overflow: hidden; }
+.bar { height: 14px; background: var(--near); position: relative; overflow: hidden; border-radius: 3px; }
 .bar > span { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent); }
 .bar.pub > span { background: var(--below); }
-.bars { display: grid; grid-template-columns: 124px 1fr 40px; gap: 4px 10px; align-items: center; font-size: 13px; }
+.bars { display: grid; grid-template-columns: 124px 1fr 44px; gap: 4px 10px; align-items: center; font-size: 14px; }
 .bars .t { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--ink); }
-.empty { border: 2px dashed var(--muted); background: transparent; }
+.empty { border: 1px dashed var(--muted); background: transparent; }
 /* Timeline: one bar per route, on one scale of days. A segment is one step, coloured by who owns it. */
-.tl { display: grid; grid-template-columns: minmax(110px, 190px) 1fr 76px; gap: 10px 14px; align-items: center; font-size: 14px; margin: 6px 0 12px; }
-.tl .who { font-weight: 600; line-height: 1.2; }
-.tl .who small { display: block; font-weight: 400; color: var(--muted); font-size: 13px; }
-.tl .bar2 { display: flex; height: 34px; gap: 2px; }
-.tl .sg { display: flex; align-items: center; justify-content: center; min-width: 3px; color: #fff; font-size: 12.5px; font-weight: 700; overflow: hidden; white-space: nowrap; }
-.sg.patient, .legend i.patient { background: var(--muted); }
-.sg.primary, .legend i.primary { background: var(--below); }
+.tl { display: grid; grid-template-columns: minmax(110px, 190px) 1fr 76px; gap: 10px 14px; align-items: center; font-size: 15px; margin: 6px 0 12px; }
+.tl .who { font-weight: 600; line-height: 1.3; }
+.tl .who small { display: block; font-weight: 400; color: var(--muted); font-size: 14px; }
+.tl .bar2 { display: flex; height: 36px; gap: 2px; border-radius: 4px; overflow: hidden; }
+.tl .sg { display: flex; align-items: center; justify-content: center; min-width: 3px; color: var(--on-seg); font-size: 14px; font-weight: 600; overflow: hidden; white-space: nowrap; }
+.sg.patient, .legend i.patient { background: var(--seg-patient); }
+.sg.primary, .legend i.primary { background: var(--below); color: var(--on-below); }
 .sg.hospital, .legend i.hospital { background: var(--accent); color: var(--on-accent); }
-.tl .tot { font-weight: 800; font-size: 20px; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
-.tl .tot small { display: block; font-size: 12px; font-weight: 400; color: var(--muted); letter-spacing: 0; }
+.tl .tot { font-weight: 600; font-size: 22px; line-height: 1.1; }
+.tl .tot small { display: block; font-size: 13px; font-weight: 400; color: var(--muted); }
 @media (max-width: 600px) { .tl { grid-template-columns: 1fr 64px; } .tl .who { grid-column: 1 / -1; } }
 .tablewrap { overflow-x: auto; }
-td.extra { font-weight: 700; }
-.lead { font-size: 17px; font-weight: 500; margin: 0 0 14px; max-width: 70ch; }
-.sources ol { margin: 0; padding-left: 26px; font-size: 13.5px; max-width: 90ch; }
-.sources li { margin-bottom: 6px; padding: 1px 4px; }
+td.extra { font-weight: 600; }
+.lead { font-size: 17px; margin-bottom: 14px; max-width: 100ch; }
+.sources ol { margin: 0; padding-left: 28px; font-size: 14px; column-count: 2; column-gap: 40px; }
+.sources li { break-inside: avoid; }
+@media (max-width: 1250px) { .sources ol { column-count: 1; } }
+.sources li { margin-bottom: 6px; padding: 2px 6px; border-radius: 4px; }
 .sources li.hl { background: var(--chip); }
-footer { border-top: 3px solid var(--rule); color: var(--muted); font-size: 13px; padding: 16px 28px 28px; max-width: 90ch; }
+footer { color: var(--muted); font-size: 14px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); max-width: 96ch; }
+
+/* ---------- Identity: a planning console ----------
+   One type family in three cuts: condensed for names and labels, mono for every measured number, sans for reading.
+   Petrol for action and "better", signal orange for "worse", square corners, hairlines and no shadows.
+   The map sits in a dark console in both themes, like the image pane of a planning workstation. */
+:root {
+  --cond: "IBM Plex Sans Condensed", "IBM Plex Sans", "Arial Narrow", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --bg: #edf1f2; --surface: #ffffff; --ink: #0f2228; --muted: #4b5d65; --line: #d2dadd; --line-strong: #9fafb6;
+  --bar: #0c2a32; --accent: #006f7e; --on-accent: #ffffff; --chip: #e0f0f2;
+  --above: #0a7b8b; --above-soft: #9dcfd6; --shadow: none;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0a1417; --surface: #121f24; --ink: #e6eef0; --muted: #9db1b8; --line: #24363c; --line-strong: #486068;
+    --bar: #071012; --accent: #4cc3d1; --on-accent: #06181c; --chip: #14343a; --above: #4cc3d1; --above-soft: #1f5a63;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0a1417; --surface: #121f24; --ink: #e6eef0; --muted: #9db1b8; --line: #24363c; --line-strong: #486068;
+  --bar: #071012; --accent: #4cc3d1; --on-accent: #06181c; --chip: #14343a; --above: #4cc3d1; --above-soft: #1f5a63;
+}
+#map {
+  --surface: #0e2930; --bg: #0a2026; --ink: #e9f2f4; --muted: #a8bcc2; --line: #26434b; --line-strong: #4b6870;
+  --near: #2d4850; --nodata: #18323a; --accent: #4cc3d1; --on-accent: #06181c; --chip: #14343a;
+  --above: #4cc3d1; --above-soft: #216570; --below: #f0935a; --on-below: #1d1107; --below-soft: #7b4a2b;
+  background: var(--surface); color: var(--ink); border-color: var(--surface);
+}
+.panel, .hl-card, .kpi, .pathbox, .actside, .readout, .btn, .maptoggle, .maptoggle button, .appbar button, .appbar select,
+.line, .bar, #tip, .badge, .pill, .subtabs button, .tabs button, #brieftext { border-radius: 2px; }
+.appbar { border-bottom: 3px solid var(--accent); }
+.appbar .mark { font-family: var(--cond); font-size: 21px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+/* Labels are plain words in sentence case. Capitals and wide spacing are kept for nothing. */
+.eyebrow, .hl-card .k, .kpi .l, .plan .when, .action dt, table.g3 th, .badge, .pill, .subtabs button, .maptoggle button {
+  font-family: var(--font); letter-spacing: 0; text-transform: none; }
+.kpi .l { font-size: 13px; } table.g3 th { font-size: 13px; } .badge, .pill { font-size: 12.5px; font-weight: 600; }
+h1.query, .panel h2, .action .what, .sub, .plan .t, #map h2 { font-family: var(--cond); letter-spacing: .005em; }
+h1.query { font-size: clamp(30px, 3vw, 40px); font-weight: 700; }
+.panel h2 { font-size: 22px; } .action .what { font-size: clamp(23px, 2vw, 28px); } .sub, .plan .t { font-size: 18px; }
+.kpi .v, .hl-card .n, .tl .tot, .bignum, .sim .big, .line, table.g3 td.num, .tl .sg, .bars > span:nth-child(3n), sup.cite, .scale {
+  font-family: var(--mono); letter-spacing: -0.02em; }
+.kpi .v { font-size: 30px; } .hl-card .n { font-size: 26px; } sup.cite { letter-spacing: 0; }
+.kpi { border-top-width: 1px; border-top-color: var(--line); border-left: 4px solid var(--line-strong); }
+.kpi.below { border-top-color: var(--line); border-left-color: var(--below); } .kpi.above { border-top-color: var(--line); border-left-color: var(--above); }
+/* The three working views stand on the left: finding, action, evidence. The three reference views stand
+   on the right in a lighter weight. The row never shrinks, so a long view cannot crop it. */
+.tabs, .subtabs, #notice { flex: none; }
+.tabs { gap: 4px; }
+.tabs button { font: 600 17px var(--display); letter-spacing: 0; padding: 10px 14px 12px; }
+.tabs button:nth-child(4) { margin-left: auto; }
+.tabs button:nth-child(n+4) { font-weight: 500; font-size: 15px; }
+.subtabs button { font-size: 14px; font-weight: 500; }
+.maptoggle button { font-size: 14px; font-weight: 600; }
+
+/* ---------- The atlas plate ----------
+   One dark material holds everything that is map: the bar, the map of Finland, and the care pathway drawn as
+   a route with four stations. The route is the first thing in a finding, because the brief asks where on the
+   pathway a gap sits. Numbers and sentences stand on plain paper under it, with rules and no boxes.
+   Two families: Familjen Grotesk, a Nordic grotesque, for names, headings and measured numbers, and
+   IBM Plex Sans for reading. */
+:root {
+  --display: "Familjen Grotesk", "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --cond: var(--display); --mono: var(--display);
+  --plate: #0e2930; --plate-ink: #e9f2f4; --plate-muted: #a8bcc2; --plate-line: #4b6870; --plate-signal: #f0935a;
+  --bar: var(--plate);
+}
+.kpi .v, .hl-card .n, .tl .tot, .bignum, .sim .big, .line, table.g3 td.num, .tl .sg, .bars > span:nth-child(3n), sup.cite, .scale {
+  letter-spacing: -0.01em; font-variant-numeric: tabular-nums lining-nums; }
+.appbar { border-bottom: 0; }
+.appbar .mark { font: 700 23px var(--display); letter-spacing: -0.01em; text-transform: none; }
+.eyebrow { font-size: 14px; }
+.kpi .l, table.g3 th, .action dt, .hl-card .k, .plan .when { font-size: 14px; }
+.badge, .pill { font-size: 13px; }
+h1.query, .panel h2, .action .what, .sub, .plan .t, #map h2 { letter-spacing: -0.01em; }
+.panel, .hl-card { border: 0; }
+#act { border-left: 0; }
+
+/* Four numbers as a ledger: a rule on top of each column, in the signal colour where the county is behind. */
+@media screen {
+.kpis { gap: 0 28px; }
+.kpis .kpi { border: 0; border-top: 2px solid var(--line-strong); border-radius: 0; padding: 10px 0 12px; }
+.kpis .kpi.below { border-top-color: var(--below); } .kpis .kpi.above { border-top-color: var(--above); }
+.kpis .kpi .v { font: 700 34px/1.15 var(--display); margin: 4px 0; }
+.kpis .kpi .v small { font: 500 16px var(--font); letter-spacing: 0; }
+#campaign .kpis .kpi .v { font-size: 30px; }
+}
+/* The three sentences carry their number as a plain numeral. */
+ol.summary li { padding-left: 40px; }
+ol.summary li::before { background: none; width: auto; height: auto; display: block; border-radius: 0; color: var(--accent); font: 700 24px/1.15 var(--display); }
+
+@media screen {
+  /* The finding opens on the plate: the county, then its route. The numbers and the sentences follow on paper. */
+  #finding { display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+  #finding > .eyebrow, .pathbox > .eyebrow { display: none; }
+  #finding h1.query { order: 1; margin: 0; padding: 18px 28px 0; background: var(--plate); color: var(--plate-ink); font-size: clamp(32px, 3.2vw, 44px); }
+  #finding .findgrid { display: contents; }
+  #finding .pathbox { order: 2; }
+  #finding .kpis { order: 3; padding: 22px 28px 4px; }
+  #finding .findgrid > div { order: 4; padding: 12px 28px 26px; max-width: 96ch; }
+  .pathbox {
+    --surface: var(--plate); --bg: #0a2026; --ink: var(--plate-ink); --muted: var(--plate-muted); --line: #26434b; --line-strong: var(--plate-line);
+    --below: var(--plate-signal); --on-below: #1d1107;
+    background: var(--plate); color: var(--plate-ink); border: 0; border-radius: 0; padding: 0 28px 24px;
+    display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 0 40px; align-items: start; }
+  /* Keep the four stations close enough to read as one pathway on a wide display. */
+  .pathbox .route { grid-column: 1 / -1; width: min(100%, 900px); justify-self: center; margin: 20px auto 16px; }
+  .pathbox .verdict { margin: 0; font: 600 22px/1.3 var(--display); letter-spacing: -0.01em; gap: 10px 12px; }
+  .pathbox .verdict b { font-weight: 700; color: var(--plate-signal); }
+  .pathbox .caveat { margin: 2px 0 0; font-size: 13.5px; line-height: 1.5; max-width: none; }
+  /* A station is a ring with its sign inside. A heavy signal line joins the stations that the question is about. */
+  .route .stop { --station-size: 46px; --icon-size: 21px; padding: 60px 6px 0; font: 600 18px/1.25 var(--display); color: var(--plate-muted); }
+  .route .stop::before { top: 20px; height: 6px; }
+  .route .stop::after { content: ""; width: var(--station-size); height: var(--station-size); margin-left: calc(var(--station-size) / -2); border-width: 3px; }
+  /* Numbered stations are deliberately typographic, avoiding four unrelated pictograms that
+     can look optically off-centre inside identical rings. */
+  .route .stop::after { content: counter(stop); display: grid; place-items: center; font: 700 16px/1 var(--display); }
+  .route .stop .stop-icon { display: none; }
+  .route .stop.hit, .route .stop.warn { color: var(--plate-ink); }
+  .route .stop.hit .stop-icon { color: var(--on-below); }
+  .route .stop small { font: 400 13.5px/1.3 var(--font); color: var(--plate-signal); }
+  @media (max-width: 1250px) { .pathbox { grid-template-columns: 1fr; gap: 12px; } }
+
+  /* The action opens on the same plate: the one thing to do first, in the county's own words. */
+  #act { padding: 0; overflow: hidden; }
+  #act > .eyebrow { background: var(--plate); color: var(--plate-muted); padding: 18px 28px 0; }
+  #act .action .what { background: var(--plate); color: var(--plate-ink); margin: 0; padding: 4px 28px 22px; max-width: none; font-size: clamp(24px, 2.2vw, 31px); line-height: 1.2; }
+  #act .action .meta { margin-top: 16px; }
+  #act .action .meta, #act .action .detail, #act .actgrid { padding-left: 28px; padding-right: 28px; }
+  #act .actgrid { padding-bottom: 26px; margin-top: 18px; }
+  #act #brieftext { margin: 0 28px 20px; width: calc(100% - 56px); }
+  /* The steps of a plan carry a plain numeral, like the three sentences of a finding. */
+  .plan li { padding-left: 40px; padding-bottom: 16px; }
+  .plan li::before, .plan li:first-child::before { background: none; border: 0; border-radius: 0; width: auto; height: auto; display: block; color: var(--accent); font: 700 26px/1.1 var(--display); }
+  .plan li::after { display: none; }
+  .actside { background: none; border: 0; border-left: 1px solid var(--line-strong); border-radius: 0; padding: 0 0 0 24px; }
+  @media (max-width: 1250px) { .actside { border-left: 0; border-top: 1px solid var(--line-strong); padding: 16px 0 0; } }
+  @media (max-width: 560px) {
+    #finding h1.query { padding: 20px 20px 0; font-size: clamp(28px, 9vw, 34px); }
+    .pathbox { padding: 0 20px 22px; }
+    .pathbox .route { width: 100%; margin: 16px 0 14px; }
+    .route .stop { --station-size: 36px; font-size: 12px; line-height: 1.2; padding: 49px 2px 0; }
+    .route .stop::after { width: var(--station-size); height: var(--station-size); margin-left: calc(var(--station-size) / -2); }
+    .route .stop::before { top: 15px; height: 4px; }
+    .route .stop small { font-size: 11px; }
+    .pathbox .verdict { font-size: 19px; }
+    #finding .kpis { padding: 20px; }
+    #finding .findgrid > div { padding: 10px 20px 24px; }
+  }
+}
+.printonly { display: none; }
+/* The decision on one screen: one line about the people, one line of method, and the checks. */
+.decide { margin: -4px 0 22px; padding: 0 26px 20px; border-bottom: 1px solid var(--line); }
+.decide .headline { font-size: clamp(20px, 1.8vw, 25px); font-weight: 600; line-height: 1.3; margin: 6px 0 6px; max-width: 60ch; }
+.decide .so { font-size: 17px; max-width: 72ch; }
+.checks { list-style: none; margin: 14px 0 8px; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.checks li { display: flex; gap: 8px; align-items: baseline; font-size: 15px; padding: 6px 12px; border: 1px solid var(--line-strong); border-radius: 6px; max-width: 100%; }
+.checks .m { font-weight: 700; }
+.checks .c-yes .m { color: var(--accent); } .checks .c-no .m { color: var(--below); } .checks .c-na .m { color: var(--muted); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.decide .fine, .loop .fine { font-size: 14px; color: var(--muted); }
+.loop { margin-top: 22px; padding: 18px 26px 0; border-top: 1px solid var(--line); }
+.loop .days { list-style: none; margin: 10px 0 14px; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.loop .days li { background: var(--bg); border: 1px solid var(--line); border-top: 3px solid var(--accent); border-radius: 6px; padding: 10px 12px; font-size: 15px; }
+.loop .days .when { font-size: 13px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
+.loop dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 16px; margin: 0 0 8px; }
+.loop dt { font-size: 13px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding-top: 2px; }
+.loop dd { margin: 0; }
+@media (max-width: 900px) { .loop .days { grid-template-columns: 1fr; } .loop dl { grid-template-columns: 1fr; } }
+body.focus main { grid-template-columns: minmax(0, 1fr) !important; }
+body.focus .mapcol { display: none; }
+#focus[aria-pressed="true"] { color: var(--plate-ink, #fff); background: rgba(255, 255, 255, .14); }
+
+/* These come after the desktop composition on purpose: narrow layouts replace it rather than
+   merely trying to shrink it. */
+@media screen and (max-width: 800px) {
+  .tabs { flex-wrap: wrap; overflow-x: visible; gap: 0; }
+  .tabs button, .tabs button:nth-child(n+4) { flex: 1 1 33.333%; min-width: 0; margin-left: 0; font-size: 15px; padding-inline: 6px; }
+  .mapgrid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  #mapsvg { display: flex; justify-content: center; min-width: 0; }
+  .readout { max-width: 100%; overflow-wrap: anywhere; }
+}
+@media screen and (max-width: 560px) {
+  .appbar .mark { font: 700 20px var(--display); }
+  .panel { padding: 18px 16px 20px; }
+  .maptoggle { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #map svg { height: min(250px, 68vw); }
+}
+
+/* Printed as a deliberately short A4 decision brief, rather than a screenshot of the app. */
+@media print {
+  @page { size: A4; margin: 9mm 13mm 8mm; }
+  html, body { width: auto !important; height: auto !important; overflow: visible !important; background: #fff !important; color: #152235 !important; }
+  body { display: block !important; font: 10pt/1.38 var(--font); }
+  .appbar .tools, .appbar .pick, .tabs, .subtabs, .mapcol, .cta, .toplan, #tip, .views > *, #brieftext { display: none !important; }
+  .views > #finding, .views > #act { display: block !important; }
+  .wrap, main, .viewcol, .views { display: block !important; width: auto !important; min-height: 0 !important; max-height: none !important; height: auto !important; overflow: visible !important; padding: 0 !important; margin: 0 !important; }
+
+  .printonly { display: block !important; }
+  .appbar { display: grid !important; grid-template-columns: 10mm 1fr auto; gap: 0 3mm; background: none !important; color: #152235 !important; border-bottom: 1.5pt solid #152235; padding: 0 0 2.5mm !important; margin: 0 0 3mm; }
+  .appbar svg { width: 9mm; height: 9mm; grid-row: span 2; }
+  .appbar .mark { font-size: 18pt; line-height: 1; letter-spacing: -.02em; }
+  .appbar .mark::after { content: "Decision brief · county cancer planning"; display: block; margin-top: 1.5mm; color: #526174; font-size: 8.5pt; font-weight: 500; letter-spacing: .04em; text-transform: uppercase; }
+  .appbar .tag { display: none !important; }
+  #printmeta { grid-column: 3; grid-row: 1 / span 2; align-self: end; text-align: right; font: 500 8.5pt/1.35 var(--mono); color: #526174; }
+  #printmeta b { display: block; font: 700 11pt/1.2 var(--cond); letter-spacing: .04em; text-transform: uppercase; color: #152235; }
+  .eyebrow::before { width: 2mm; height: 2mm; margin-right: 1.5mm; }
+  #printfoot { margin-top: 2.5mm; padding-top: 2mm; border-top: 1.5pt solid #152235; font-size: 6.5pt; line-height: 1.28; color: #3c4b59; }
+  #printfoot { break-inside: avoid; }
+  #printfoot ol { margin: 1mm 0 1.5mm; padding-left: 5mm; column-count: 3; column-gap: 7mm; }
+  #printfoot li { break-inside: avoid; margin-bottom: .8mm; }
+
+  .panel { border: 0 !important; box-shadow: none !important; border-radius: 0 !important; padding: 0 !important; margin: 0 !important; background: transparent !important; }
+  .eyebrow { font-size: 8.5pt; letter-spacing: .1em; color: #526174; }
+  h1.query { font-size: 20pt; line-height: 1.05; margin: 1mm 0 2.5mm; }
+
+  .kpis { grid-template-columns: repeat(4, 1fr); gap: 2.5mm; }
+  .kpi { border: .5pt solid #c5cdd7; border-radius: 0; border-left: 2.5pt solid #a9b4c2; padding: 1.8mm 3mm; }
+  .kpi.below { border-left-color: #b8440d; } .kpi.above { border-left-color: #006f7e; }
+  .kpi .l { font-size: 8.5pt; }.kpi .v { font-size: 16pt; margin: 0; }.kpi .v small { font-size: 10pt; }.kpi .s { font-size: 8.5pt; }
+
+  .findgrid { display: grid !important; grid-template-columns: 1fr 1.2fr; gap: 6mm; margin-top: 3.5mm; }
+  ol.summary { font-size: 9.5pt; line-height: 1.33; }
+  ol.summary li { padding: 2mm 0 2mm 9mm; border-top: .5pt solid #d6dce4; }
+  ol.summary li::before { left: 0; top: 2mm; width: 5mm; height: 5mm; background: none; color: #006f7e; font-size: 9pt; }
+  .writer { display: none; }
+  /* The fixed template ends on "First action: ...", which the headline right below repeats. */
+  ol.summary.tpl li:nth-child(3) { display: none; }
+  .wrap { zoom: .87; }
+  .pathbox { background: #f1f4f5; border: 0; border-left: 2pt solid #006f7e; border-radius: 0; padding: 3mm 4mm; }
+  .route { margin: 3mm 0; }.stop { padding: 8mm 1mm 0; font-size: 8pt; }.stop::before { top: 3mm; height: 1.5pt; }.stop::after { top: 0; width: 5mm; height: 5mm; margin-left: -2.5mm; border-width: 1pt; font-size: 8pt; }.stop small { font-size: 7pt; white-space: nowrap; }.verdict { font-size: 9pt; margin-top: 2mm; }.caveat { font-size: 7.5pt; line-height: 1.3; margin-top: 2mm; }
+
+  #act { margin-top: 3mm !important; border-left: 0 !important; }
+  #act > .eyebrow { border-top: 1.5pt solid #152235; padding-top: 3mm; }
+  .action .what { font-size: 13pt; line-height: 1.18; margin: 1mm 0; }.action .meta, .action .detail { font-size: 8.5pt; max-width: none; }
+  /* The three steps side by side. Under them, who acts, why here and the county's numbers stand side by side,
+     so the brief and its sources stay on one page. */
+  .actgrid { display: grid !important; grid-template-columns: 1fr; gap: 3mm; margin-top: 2.5mm; align-items: start; }
+  .action dl { display: grid; grid-auto-flow: column; grid-template-rows: auto auto; grid-auto-columns: 1fr; gap: 0 5mm; }
+  .plan { display: grid; grid-template-columns: 1.55fr 1fr 1fr; gap: 4mm; }
+  .plan li { padding: 7mm 0 0; font-size: 8pt; line-height: 1.32; break-inside: avoid; border-top: .75pt solid #a9b4c2; }
+  .plan li::before { top: 1.2mm; width: 4.6mm; height: 4.6mm; font-size: 8pt; border-width: 1pt; }.plan li::after { display: none; }
+  .plan .when { position: absolute; top: 1.8mm; left: 6.5mm; font-size: 7.5pt; }.plan .t { font-size: 9pt; margin-bottom: .5mm; }.plan .fine { font-size: 7pt; margin-top: .5mm; }
+  .actside { background: #f1f4f5; border: 0; border-radius: 0; padding: 2.5mm 3mm; }
+  .action dt { font-size: 7pt; }.action dd { font-size: 8pt; line-height: 1.3; margin: 0; }
+  sup.cite { font-size: 6.5pt; } a { color: #006f7e; text-decoration: none; } footer { display: none; }
+  /* Page 1 keeps the brief. The checks and the loop move to page 2, the action packet. */
+  #act .decide, #act .loop, #caveats { display: none !important; }
+  #packet { break-before: page; font-size: 8.5pt; line-height: 1.32; }
+  #packet h2 { font-size: 14pt; margin: 0 0 1mm; }
+  #packet h3, #packet .loop h3 { font-size: 9pt; margin: 3mm 0 1mm; text-transform: uppercase; letter-spacing: .06em; color: #526174; }
+  #packet .cols { display: grid; grid-template-columns: 1fr 1.15fr; gap: 6mm; margin-top: 2mm; }
+  #packet ul { margin: 0; padding-left: 4mm; } #packet ul.plain { list-style: none; padding: 0; }
+  #packet li { margin-bottom: .8mm; break-inside: avoid; }
+  #packet dl { margin: 0; } #packet dt { font-weight: 600; font-size: 7.5pt; text-transform: uppercase; letter-spacing: .05em; color: #526174; margin-top: 1.5mm; } #packet dd { margin: 0; }
+  #packet .loop { display: block !important; margin: 0; padding: 0; border: 0; }
+  #packet .loop .days { list-style: none; padding: 0; margin: 1mm 0 2mm; display: grid; grid-template-columns: 1fr; gap: 1.5mm; }
+  #packet .loop .days li { font-size: 8.5pt; line-height: 1.32; background: none; border: 0; border-left: 2pt solid #830051; border-radius: 0; padding: .5mm 0 .5mm 2.5mm; }
+  #packet .loop dl { display: block; } #packet .loop dd { margin-bottom: 1mm; }
+  #packet .loop .days .when { font-weight: 700; font-size: 7.5pt; text-transform: uppercase; color: #830051; }
+  #packet .fine { font-size: 7pt; color: #526174; margin-top: 2mm; }
+}
+/* ---------- Refinement ----------
+   Quieter chrome so the plate and the numbers carry the page: ghost buttons in the bar, a single
+   segmented rail for the parts of a view, reading notes folded under the verdict, thin scrollbars. */
+@media screen {
+  .appbar { padding-block: 10px; gap: 10px 14px; }
+  .appbar button { border-color: transparent; color: var(--plate-muted); }
+  .appbar button:hover { color: var(--plate-ink); background: rgba(255, 255, 255, .08); }
+  .appbar select { border-color: rgba(255, 255, 255, .16); background-color: rgba(255, 255, 255, .06); }
+  .appbar select:focus-visible { outline-color: var(--plate-signal); }
+
+  .tabs { border-bottom-color: var(--line); }
+  .tabs button:hover { background: none; color: var(--ink); }
+  .tabs button[aria-current="page"] { box-shadow: inset 0 -2px 0 var(--accent); }
+
+  .subtabs { gap: 0; padding: 12px 0 2px; }
+  .subtabs:empty { padding: 0; }
+  .subtabs button { border: 0; background: none; border-radius: 0; padding: 6px 12px; min-height: 32px; color: var(--muted);
+    box-shadow: inset 0 0 0 1px var(--line); margin-right: -1px; }
+  .subtabs button:first-child { border-radius: 4px 0 0 4px; } .subtabs button:last-child { border-radius: 0 4px 4px 0; }
+  .subtabs button:hover { color: var(--ink); border: 0; }
+  .subtabs button[aria-pressed="true"] { background: var(--ink); color: var(--surface); box-shadow: inset 0 0 0 1px var(--ink); }
+
+  .panel { padding: 24px 28px 26px; }
+  .panel h2 { margin-bottom: 14px; }
+  .lead { line-height: 1.55; max-width: 80ch; }
+  .caveat { line-height: 1.55; }
+
+  /* The plate: verdict and badges, with the reading notes behind one fold. */
+  .pathbox { padding-bottom: 22px; }
+  .pathbox .route { margin: 14px auto 18px; }
+  .pathbox .verdict, .pathbox details.why { grid-column: 1 / -1; max-width: 72ch; }
+  details.why { margin: 10px 0 0; color: var(--plate-muted); font-size: 14px; }
+  details.why > summary { cursor: pointer; list-style: none; font: 600 15px var(--display); color: var(--plate-ink); padding: 6px 0; width: max-content; }
+  details.why > summary::-webkit-details-marker { display: none; }
+  details.why > summary::before { content: "+"; display: inline-block; width: 1.1em; color: var(--accent); }
+  details.why[open] > summary::before { content: "\2212"; }
+  details.why > summary span { font: 400 13px var(--font); color: var(--plate-muted); }
+  details.why ul { margin: 6px 0 0; padding: 0; list-style: none; }
+  details.why li { padding: 7px 0 7px 14px; border-top: 1px solid var(--line); line-height: 1.5; position: relative; }
+  details.why li::before { content: ""; position: absolute; left: 0; top: 15px; width: 5px; height: 5px; background: var(--plate-line); }
+  .badge { border-color: var(--line-strong); background: transparent; }
+
+  /* The map legend: a dashed stroke, not a box that reads as a checkbox. */
+  .dash i { width: 22px; height: 0; border: 0; border-top: 2px dashed var(--muted); border-radius: 0; vertical-align: 4px; margin-right: 8px; }
+  .readout { border-color: var(--line); }
+
+  table.g3 th { border-bottom-width: 1px; }
+  table.g3 tbody tr:hover td { background: color-mix(in srgb, var(--accent) 5%, transparent); }
+
+  .views { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+  .views::-webkit-scrollbar { width: 8px; } .views::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 4px; }
+}
+@media print { details.why { display: none !important; } }
+/* ---------- AstraZeneca palette ----------
+   Mulberry for action and links, AstraZeneca purple for the plate, lime for the one selected thing on the plate.
+   The data scale keeps its colour-blind-safe pair: gold for "worse", light blue for "better". Gold is darkened
+   where it is text on white, so it keeps its contrast. */
+:root {
+  --az-mulberry: #830051; --az-purple: #3c1053; --az-lime: #c4d600; --az-gold: #f0ab00; --az-lightblue: #68d2df; --az-navy: #003865;
+  --bg: #f5f2f5; --surface: #ffffff; --ink: #231a26; --muted: #5d5262; --line: #e4dce5; --line-strong: #b6a9b9;
+  --accent: var(--az-mulberry); --on-accent: #ffffff; --chip: #f7e7f0;
+  --above: #00728f; --above-soft: #a6dde5; --below: #a86400; --on-below: #ffffff; --below-soft: #f6d48a; --below-bg: #fdf4e1;
+  --near: #e7e0e8; --nodata: #f0ecf1; --seg-patient: #6b5f70;
+  --plate: var(--az-purple); --plate-ink: #f7f0f8; --plate-muted: #cdbad5; --plate-line: #6e4c82; --plate-signal: var(--az-gold);
+  --bar: var(--plate);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #140b17; --surface: #1f1224; --ink: #f3ecf4; --muted: #bba9c2; --line: #382540; --line-strong: #604a6a;
+    --accent: #ec6aa9; --on-accent: #2a0419; --chip: #3a1630;
+    --above: var(--az-lightblue); --above-soft: #2c6878; --below: var(--az-gold); --on-below: #2a1a00; --below-soft: #7a5a1a; --below-bg: #2b2010;
+    --near: #3d2c46; --nodata: #2a1c31; --seg-patient: #9a8aa1; --plate: #2f0c42; --bar: #2f0c42;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #140b17; --surface: #1f1224; --ink: #f3ecf4; --muted: #bba9c2; --line: #382540; --line-strong: #604a6a;
+  --accent: #ec6aa9; --on-accent: #2a0419; --chip: #3a1630;
+  --above: var(--az-lightblue); --above-soft: #2c6878; --below: var(--az-gold); --on-below: #2a1a00; --below-soft: #7a5a1a; --below-bg: #2b2010;
+  --near: #3d2c46; --nodata: #2a1c31; --seg-patient: #9a8aa1; --plate: #2f0c42; --bar: #2f0c42;
+}
+#map {
+  --surface: var(--plate); --bg: #2c0b3e; --ink: var(--plate-ink); --muted: var(--plate-muted); --line: #573a6a; --line-strong: var(--plate-line);
+  --near: #594470; --nodata: #432a57; --accent: var(--az-lime); --on-accent: #26092f; --chip: #4a1f5e;
+  --above: var(--az-lightblue); --above-soft: #3b7f93; --below: var(--az-gold); --on-below: #2a1a00; --below-soft: #b5841c;
+}
+@media screen {
+  .pathbox { --bg: #2c0b3e; --line: #573a6a; --accent: var(--az-lime); }
+  .appbar .brandmark rect { fill: var(--az-mulberry); }
+  .appbar .brandmark circle[fill="#f0935a"] { fill: var(--az-lime); }
+  .tabs button[aria-current="page"] { color: var(--accent); }
+  .appbar select:focus-visible { outline-color: var(--az-lime); }
+}
+@media print {
+  .kpi.below { border-left-color: #a86400 !important; } .kpi.above { border-left-color: #830051 !important; }
+  ol.summary li::before, a { color: #830051 !important; }
+  .pathbox { border-left-color: #830051 !important; }
+}
 </style>
 </head>
 <body>
-<header class="topbar">
-  <span class="mark">Pathway Watch</span>
+<header class="appbar">
+  <svg class="brandmark" width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><rect width="30" height="30" rx="7" fill="#0a7b8b"/><path d="M6 21.5C10 18 10.5 12 15 10.5s5 3 9-2.5" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/><circle cx="6" cy="21.5" r="2.2" fill="#fff"/><circle cx="15" cy="10.5" r="2.2" fill="#fff"/><circle cx="24" cy="8" r="2.2" fill="#f0935a"/><circle cx="20.2" cy="19.8" r="4.1" fill="none" stroke="#fff" stroke-width="1.35"/><path d="M17.6 19.8h5.2M20.2 17.2v5.2" stroke="#fff" stroke-width="1.35" stroke-linecap="round"/></svg>
+  <span class="mark">Cancer Care Atlas</span>
+  <span class="pick"><select id="cancer" aria-label="Cancer"></select> in <select id="county" aria-label="County"></select></span>
   <span class="tag">Where cancer patients in a county fall behind, and what to do first</span>
+  <span class="printonly" id="printmeta"></span>
+  <span class="tools"><button type="button" id="focus" aria-pressed="false" title="Hide the map so the decision fills the screen">Focus</button><button type="button" id="theme">Dark mode</button><button type="button" class="js-print">Print brief</button></span>
 </header>
-<section class="headlines" id="headlines" aria-label="Findings for Finland"></section>
+<div class="wrap">
 <main>
   <div class="stack mapcol">
     <section class="panel" id="map">
-      <div class="maptoggle" role="group" aria-label="Map layer"><button data-k="survival" class="on">Survival</button><button data-k="screening">Screening</button><button data-k="mortality">Mortality</button><button data-k="channel">Public route</button></div>
-      <div id="mapsvg"></div>
-      <div class="legend" id="legend"></div>
+      <h2 id="maptitle">Map</h2>
+      <div class="maptoggle" role="group" aria-label="Map layer"><button data-k="survival" class="on">Survival</button><button data-k="screening">Screening</button><button data-k="mortality">Mortality</button><button data-k="channel">Care channel</button></div>
+      <div class="mapgrid"><div id="mapsvg"></div><div class="readout" id="readout" aria-live="polite" aria-atomic="true"></div></div>
+      <div id="legend"></div>
     </section>
+    <p class="mapnote">A planning tool for a county. It gives no advice about one patient.</p>
   </div>
-  <div class="stack">
-    <section class="panel first">
-      <h1 class="query"><select id="cancer" aria-label="Cancer"></select> in <select id="county" aria-label="County"></select></h1>
-      <div class="route" id="route" aria-hidden="true"></div>
-      <p class="verdict" id="verdict"></p>
-      <ol class="summary" id="summary"></ol>
-      <div class="writer" id="writer"></div>
-      <p class="caveat" id="caveats"></p>
+  <div class="stack viewcol">
+    <p class="caveat limit" id="notice" role="alert" hidden></p>
+    <nav class="tabs" id="tabs" aria-label="Views">
+      <button type="button" data-tab="finding">Finding</button><button type="button" data-tab="act">Decision</button><button type="button" data-tab="evidence">Evidence</button><button type="button" data-tab="finland">Finland</button><button type="button" data-tab="gaps">Measurement gaps</button><button type="button" data-tab="sources">Sources</button>
+    </nav>
+    <div class="subtabs" id="subtabs" role="group" aria-label="Parts of this view"></div>
+    <div class="views" id="views">
+    <section class="panel" id="finding" data-tab="finding">
+      <div class="eyebrow">County finding</div>
+      <h1 class="query" id="query">&nbsp;</h1>
+      <div class="kpis" id="kpis"></div>
+      <div class="findgrid">
+        <div><ol class="summary" id="summary"></ol><div class="writer" id="writer"></div>
+          <button type="button" class="btn primary toplan" data-go="act">See the action plan</button></div>
+        <aside class="pathbox">
+          <div class="eyebrow">Where on the care pathway</div>
+          <div class="route" id="route" aria-hidden="true"></div>
+          <p class="verdict" id="verdict"></p>
+          <details class="why" id="why"><summary>How to read this <span id="whycount"></span></summary><ul id="whylist"></ul></details>
+          <p class="caveat printonly" id="caveats"></p>
+          <p class="caveat printonly" id="limitsnote">A question to investigate, not a cause. The limits of this finding are listed on page 2, with the plan for the first 90 days.</p>
+        </aside>
+      </div>
     </section>
-    <section class="panel">
-      <h2>First action</h2>
+    <section class="panel" id="act" data-tab="act" data-sub="First action">
+      <div class="decide" id="decide"></div>
+      <div class="eyebrow">What to do first</div>
       <div class="action" id="action"></div>
-      <div class="more" id="morewrap"><ul class="rows" id="more"></ul></div>
+      <textarea id="brieftext" readonly aria-label="Brief as text"></textarea>
     </section>
-    <section class="panel" id="timeline">
-      <h2>Where the days add up on the way to treatment</h2>
+    <section class="panel" id="campaign" data-tab="act" data-sub="Screening campaign">
+      <div id="campaignbody"></div>
+    </section>
+    <section class="panel" id="moreact" data-tab="act" data-sub="Other measures">
+      <h2>Other measures that fit this county</h2>
+      <ul class="rows" id="more"></ul>
+    </section>
+    <section class="panel" id="timeline" data-tab="evidence" data-sub="Delays">
+      <h2>Where the days add up on the way to treatment, in one lymphoma study</h2>
       <div id="timelinebody"></div>
     </section>
-    <section class="panel" id="national">
-      <h2 id="nationaltitle">Where to start in Finland</h2>
-      <div id="nationalbody"></div>
-    </section>
-    <div class="grid2">
+    <div class="grid2" data-tab="evidence" data-sub="Trend">
       <section class="panel" id="chart"><h2 id="charttitle">Five-year survival</h2><div id="chartsvg"></div><div class="legend" id="chartlegend"></div></section>
       <section class="panel sim" id="sim">
-        <h2>If the county reached the national level</h2>
-        <div class="big" id="simbig">–</div>
-        <div id="simtext"></div>
-        <input type="range" id="slider" min="0" max="100" value="100" aria-label="Share of the gap closed">
-        <div class="note" id="simnote"></div>
+        <h2>What this evidence cannot show</h2>
+        <div id="simbody"></div>
       </section>
     </div>
-    <section class="panel" id="channel">
-      <h2>Who depends on public health centres for the first visit</h2>
+    <section class="panel" id="channel" data-tab="evidence" data-sub="Care channel">
+      <h2>Care channel: an equity hypothesis to test, not a ranking</h2>
       <div id="channelbody"></div>
     </section>
-    <section class="panel" id="equity">
+    <section class="panel" id="equity" data-tab="evidence" data-sub="Education and income">
       <h2>Income and education: a gap this page cannot show for a county</h2>
       <div id="equitybody"></div>
     </section>
-    <section class="panel" id="mirror">
-      <h2>The waiting-time picture Sweden publishes and Finland does not</h2>
-      <div id="mirrorbody"></div>
+    <section class="headlines" id="headlines" aria-label="Findings for Finland" data-tab="finland" data-sub="At a glance"></section>
+    <section class="panel" id="national" data-tab="finland" data-sub="County ranking">
+      <h2 id="nationaltitle">Where to start in Finland</h2>
+      <div id="nationalbody"></div>
     </section>
-    <section class="panel" id="pilot">
-      <h2>What a county pilot measures with its own records</h2>
-      <div id="pilotbody"></div>
-    </section>
-    <section class="panel missing">
-      <h2>Data that is missing, and the measure that would collect it</h2>
-      <ul class="rows" id="missing"></ul>
-    </section>
-    <section class="panel" id="goal3">
+    <section class="panel" id="goal3" data-tab="finland" data-sub="Deaths and Goal 3">
       <h2>Cancer deaths against the national strategy's Goal 3</h2>
       <div id="goal3body"></div>
     </section>
-    <section class="panel sources">
-      <h2>Sources</h2>
-      <ol id="sources"></ol>
+    <section class="panel" id="mirror" data-tab="gaps" data-sub="Sweden and Finland">
+      <h2>The waiting-time picture Sweden publishes and Finland does not</h2>
+      <div id="mirrorbody"></div>
     </section>
+    <section class="panel" id="pilot" data-tab="gaps" data-sub="County pilot">
+      <h2>What a county pilot measures with its own records</h2>
+      <div id="pilotbody"></div>
+    </section>
+    <section class="panel" id="radiotherapy" data-tab="gaps" data-sub="Radiotherapy pilot">
+      <h2>Radiotherapy equity baseline: data required before attributing a treatment gap</h2>
+      <div id="radiotherapybody"></div>
+    </section>
+    <section class="panel" id="missing" data-tab="gaps" data-sub="What is missing">
+      <h2>Data that is missing, and the measure that would collect it</h2>
+      <ul class="rows two" id="missinglist"></ul>
+    </section>
+    <section class="panel sources" id="sources" data-tab="sources">
+      <h2>Sources</h2>
+      <ol id="sourcelist"></ol>
+      <footer>A planning tool for a county. It gives no advice about one patient. Public aggregate data only. Code computes every number from a named source, and a few values are copied by hand from a paper or a report, which the source note says. In the three summary sentences, a sentence is removed before display if it cites no fact, or if it holds a number that its facts do not.</footer>
+    </section>
+    </div>
+    <div class="printonly" id="printfoot">
+      <b>Sources cited in this brief</b>
+      <ol id="printsources"></ol>
+      A planning tool for a county. It gives no advice about one patient. Public aggregate data only. Every number names its source. The local step is a proposal of the Cancer Care Atlas team. It is not roadmap text, and no county reviewed it.
+    </div>
+    <div class="printonly" id="packet"></div>
   </div>
 </main>
-<footer>A planning tool for a county. It gives no advice about one patient. Public aggregate data only. Code computes every number, and each one links to its source. In the three summary sentences, a sentence is removed before display if it cites no fact, or if it holds a number that its facts do not.</footer>
-<div id="tip"></div><span id="sizer" class="query"></span>
+</div>
+<div id="tip"></div>
 <script>
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-let META, GEO, HL, EV, state = { cancer: "bowel", county: "09", layer: "survival" }, sourceOrder = [];
+let META, GEO, HL, EV, state = { cancer: "bowel", county: "06", layer: "survival" }, sourceOrder = [];
 try { const saved = JSON.parse(localStorage.getItem("pw") || "{}"); Object.assign(state, saved); } catch (e) {}
+// A link can open one state: ?cancer=bowel&county=06&view=act&part=Screening%20campaign&theme=light.
+// The address wins over the saved choice, so a link in a deck or a mail always shows the same page.
+const LINK = new URLSearchParams(location.search);
+for (const k of ["cancer", "county", "layer"]) if (LINK.get(k)) state[k] = LINK.get(k);
 const save = () => { try { localStorage.setItem("pw", JSON.stringify({cancer: state.cancer, county: state.county})); } catch (e) {} };
 
+// ---------- theme, print and copy ----------
+const root = document.documentElement, darkOS = matchMedia("(prefers-color-scheme: dark)");
+const isDark = () => (root.dataset.theme || (darkOS.matches ? "dark" : "light")) === "dark";
+const themeLabel = () => { $("#theme").textContent = isDark() ? "Light mode" : "Dark mode"; };
+$("#theme").onclick = () => { root.dataset.theme = isDark() ? "light" : "dark"; try { localStorage.setItem("pw-theme", root.dataset.theme); } catch (e) {} themeLabel(); };
+themeLabel();
+// Focus hides the map, so the decision fills the screen during a pitch. A link can open it: ?focus=1.
+const setFocus = on => { document.body.classList.toggle("focus", on); $("#focus").setAttribute("aria-pressed", on); };
+$("#focus").onclick = () => setFocus(!document.body.classList.contains("focus"));
+setFocus(LINK.get("focus") === "1");
+// The brief prints on white paper, whatever theme the screen uses.
+let themeBeforePrint;
+addEventListener("beforeprint", () => { themeBeforePrint = root.dataset.theme; root.dataset.theme = "light"; });
+addEventListener("afterprint", () => { if (themeBeforePrint) root.dataset.theme = themeBeforePrint; else delete root.dataset.theme; });
+document.querySelectorAll(".js-print").forEach(b => b.onclick = () => print());
+
+function briefText() {
+  const [first] = B.recommendations, src = new Set(), L = [`${B.cancer.label} in ${B.county.name}: Cancer Care Atlas brief`, ""];
+  B.summary.sentences.forEach((s, i) => { L.push(`${i + 1}. ${s.text}`); s.fact_ids.forEach(id => src.add(B.facts[id].source)); });
+  if (first) {
+    const origin = first.source === "roadmap" ? `roadmap measure ${first.measure}` : "team measurement proposal";
+    L.push("", `First action (${origin}): ${first.action}`, `Step 1, start locally: ${first.local.text}`,
+      `Step 2, ${first.source === "roadmap" ? "roadmap step" : "protocol"}: ${first.first_step}`, `Step 3, success is: ${first.success}`, `Who acts: ${first.actor}`);
+    if (first.here?.length) { L.push(`In ${B.county.name}: ${first.here.map(h => h.text).join(" ")}`); first.here.forEach(h => src.add(h.source)); }
+    if (first.loop) L.push("", `Owner: ${first.actor}`, ...first.loop.days.map((d, i) => `By day ${30 * (i + 1)}: ${d}`),
+      `Before and after: ${first.loop.measure}`, `Go or no go: ${first.loop.go}`, `Next review: ${reviewDate()}`);
+    [first.source, "local_step", first.success_source].forEach(id => src.add(id));
+  }
+  L.push("", "Sources:");
+  [...src].forEach(id => { const s = META.sources[id]; if (s) L.push(`- ${s.title}${s.url ? " " + s.url : ""}`); });
+  L.push("", "A planning tool for a county. It gives no advice about one patient. The local step is a proposal of the Cancer Care Atlas team, not roadmap text.");
+  return L.join("\n");
+}
+async function copyBrief(e) {
+  const text = briefText(), b = e.currentTarget;
+  try { await navigator.clipboard.writeText(text); b.textContent = "Copied"; setTimeout(() => b.textContent = "Copy brief as text", 2000); }
+  catch (err) { const t = $("#brieftext"); t.value = text; t.style.display = "block"; t.select(); }
+}
+
+// ---------- views ----------
+// One view at a time. A view with several parts shows one part, chosen in the second row.
+// Open on the accountable next step. The finding remains one click away for analysts.
+let tab = "act"; const subOf = {};
+function showTab(t, sub) {
+  tab = t;
+  const all = [...document.querySelectorAll("#views > [data-tab]")];
+  const subs = [...new Set(all.filter(e => e.dataset.tab === t).map(e => e.dataset.sub).filter(Boolean))];
+  if (subs.includes(sub)) subOf[t] = sub;
+  const cur = subs.length ? (subOf[t] || subs[0]) : null;
+  all.forEach(e => e.hidden = !(e.dataset.tab === t && (!cur || e.dataset.sub === cur)));
+  document.querySelectorAll("#tabs button").forEach(b => {
+    if (b.dataset.tab === t) b.setAttribute("aria-current", "page");
+    else b.removeAttribute("aria-current");
+  });
+  $("#subtabs").hidden = !subs.length;
+  $("#subtabs").innerHTML = subs.map(x => `<button type="button" aria-pressed="${x === cur}" data-sub="${esc(x)}">${esc(x)}</button>`).join("");
+  $("#subtabs").querySelectorAll("button").forEach(b => b.onclick = () => showTab(t, b.dataset.sub));
+  $("#views").scrollTop = 0;
+}
+document.querySelectorAll("#tabs button").forEach(b => b.onclick = () => showTab(b.dataset.tab));
+document.querySelectorAll("[data-go]").forEach(b => b.onclick = () => showTab(b.dataset.go, b.dataset.sub));
+showTab(document.querySelector(`#tabs [data-tab="${LINK.get("view")}"]`) ? LINK.get("view") : tab, LINK.get("part"));
+
+// One request. A failed one throws an error that names the address, so the notice can say what is missing.
+async function get(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`${url} answered ${r.status}`);
+  return r.json();
+}
+// A plain message above the views. The page keeps what it could draw.
+function notice(text) { const n = $("#notice"); n.textContent = text; n.hidden = !text; }
+const RESTART = "Restart the server: uv run uvicorn backend.app:app --port " + (location.port || "8010");
+
 async function init() {
-  [META, GEO, HL, EV] = await Promise.all(["/api/meta", "/counties.geojson", "/api/headlines", "/api/evidence"].map(u => fetch(u).then(r => r.json())));
+  try {
+    [META, GEO, HL, EV] = await Promise.all(["/api/meta", "/counties.geojson", "/api/headlines", "/api/evidence"].map(get));
+  } catch (e) { console.error(e); notice(`The page cannot reach its data (${e.message}). The server is off, or it runs older code than this page. ${RESTART}`); return; }
+  // A server from before this check sends no `stale` value at all, and it is older than this page too.
+  if (META.stale !== false) notice(`The server runs older code or data than the files on disk, so some numbers can be old. ${RESTART}`);
   $("#cancer").innerHTML = Object.entries(META.cancers).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join("");
   $("#county").innerHTML = META.counties.slice().sort((a, b) => a.name.localeCompare(b.name)).map(c => `<option value="${c.code}">${esc(c.name)}</option>`).join("");
+  if (!META.cancers[state.cancer]) state.cancer = "bowel";
+  if (!META.counties.some(c => c.code === state.county)) state.county = "06";
   $("#cancer").value = state.cancer; $("#county").value = state.county;
   $("#cancer").onchange = e => { state.cancer = e.target.value; save(); render(); };
   $("#county").onchange = e => { state.county = e.target.value; save(); render(); };
-  window.addEventListener("resize", fitSelects);
-  if (document.fonts) document.fonts.ready.then(fitSelects);
   document.querySelectorAll(".maptoggle button").forEach(b => b.onclick = () => {
     state.layer = b.dataset.k; document.querySelectorAll(".maptoggle button").forEach(x => x.classList.toggle("on", x === b)); drawMap();
   });
-  $("#slider").oninput = drawSim;
   render();
 }
 
@@ -289,23 +925,23 @@ function syncLayers() {
     b.disabled = off; b.style.opacity = off ? .4 : 1;
   });
   if (noCounty && (state.layer === "survival" || state.layer === "screening")) state.layer = "mortality";
-  document.querySelectorAll(".maptoggle button").forEach(x => x.classList.toggle("on", x.dataset.k === state.layer));
+  document.querySelectorAll(".maptoggle button").forEach(x => { x.classList.toggle("on", x.dataset.k === state.layer); x.setAttribute("aria-pressed", x.dataset.k === state.layer); });
 }
-// A native select is as wide as its longest option. In the headline it must be as wide as the chosen one.
-function fitSelects() {
-  const sizer = $("#sizer");
-  for (const sel of [$("#cancer"), $("#county")]) {
-    sizer.textContent = sel.selectedOptions[0]?.textContent || "";
-    sel.style.width = Math.ceil(sizer.getBoundingClientRect().width) + 6 + "px";
-  }
+async function render() {
+  $("#cancer").value = state.cancer; $("#county").value = state.county; syncLayers();
+  if (META.stale === false) notice("");
+  // The map and the views load apart, so one failed request does not empty the other.
+  const done = await Promise.allSettled([drawMap(), drawBriefing()]);
+  const failed = done.filter(d => d.status === "rejected");
+  failed.forEach(d => console.error(d.reason));
+  if (failed.length) notice(`Part of the page did not load (${failed[0].reason.message}). ${RESTART}`);
 }
-async function render() { $("#cancer").value = state.cancer; $("#county").value = state.county; fitSelects(); syncLayers(); await Promise.all([drawMap(), drawBriefing()]); }
 
 // Counties ranked by how many registers show them behind. Fetched once per cancer.
 let NAT = {};
 async function drawNational() {
   const cancer = state.cancer;
-  if (!NAT[cancer]) NAT[cancer] = await fetch(`/api/national/${cancer}`).then(r => r.json());
+  if (!NAT[cancer]) NAT[cancer] = await get(`/api/national/${cancer}`);
   if (cancer !== state.cancer) return;
   const n = NAT[cancer], label = META.cancers[cancer].label.toLowerCase();
   $("#nationaltitle").textContent = `Where to start in Finland for ${label}`;
@@ -316,16 +952,16 @@ async function drawNational() {
     r.signals.forEach(s => srcs.add(s.source));
     return `<li class="${r.code === state.county ? "sel" : ""}"><span class="line">${esc(r.measure)}</span>
       <button data-c="${r.code}">${esc(r.name)}</button>
-      <span class="sig">${n.registers > 1 ? `<span class="dots" title="${r.registers} of ${n.registers} registers">${"●".repeat(r.registers)}${"○".repeat(n.registers - r.registers)}</span> ` : ""}${r.signals.map(s => `<b>${esc(s.text)}</b>`).join(", ")}</span></li>`;
+      <span class="sig">${n.registers > 1 ? `<span class="dots" title="${r.registers} of ${n.registers} registers">${"●".repeat(r.registers)}${"○".repeat(n.registers - r.registers)}</span> ` : ""}${r.signals.map(s => `<b>${esc(s.text)}</b>${s.strict === false ? " (may be chance among " + n.counties + " counties)" : ""}`).join(", ")}</span></li>`;
   }).join("");
   $("#nationalbody").innerHTML = `
     <p class="lead">${n.registers > 1
-      ? `${n.rows.length} of ${n.counties} counties are behind Finland in at least one register${[...srcs].map(cite).join("")}. Survival counts when the county is below Finland now and our rough 95% interval of the gap excludes zero${cite("survival_interval")}. Attendance in the public screening programme counts when the county is below Finland now and in most published years. Deaths count when the 95% interval is above 100. Counties behind in more than one register come first.`
+      ? `${n.rows.length} of ${n.counties} counties are behind Finland in at least one register${[...srcs].map(cite).join("")}. Survival counts when the county is below Finland now and our rough 95% interval of the gap excludes zero${cite("survival_interval")}. With ${n.counties} counties, about one such interval excludes zero by chance: ${n.survival_strict} of the ${n.survival_signals} survival signals hold with the stricter limit for ${n.counties} comparisons. Attendance in the public screening programme counts when the county is below Finland now and in most published years. Deaths count when the 95% interval is above 100. Counties behind in more than one register come first.`
       : `${n.rows.length} of ${n.counties} counties have more deaths than their age structure predicts, with a 95% interval above 100${[...srcs].map(cite).join("")}. Deaths are the only county register for this cancer.`} The badge is each county's first action.</p>
     <p class="caveat" style="margin:0 0 10px">${groups}</p>
     <ul class="rank">${rows}</ul>
     <p class="caveat">${n.without_signal} counties show no such signal.${n.registers > 1 ? " A filled dot is one register in which the county is behind." : ""} Survival and deaths for one cancer are related, so two dots are not two separate proofs.</p>`;
-  $("#nationalbody").querySelectorAll("button").forEach(b => b.onclick = () => { state.county = b.dataset.c; save(); render(); window.scrollTo({ top: 0 }); });
+  $("#nationalbody").querySelectorAll("button").forEach(b => b.onclick = () => { state.county = b.dataset.c; save(); render(); showTab("finding"); });
   drawSources();
 }
 
@@ -336,7 +972,12 @@ function cite(sourceId) {
   return `<sup class="cite"><a href="#src-${n}" data-n="${n}" title="${esc(META.sources[sourceId]?.title)}">${n}</a></sup>`;
 }
 function drawSources() {
-  $("#sources").innerHTML = sourceOrder.map((id, i) => {
+  // The printed brief lists only the sources that its two sections cite, under their numbers on the page.
+  const used = new Set([...document.querySelectorAll("#finding sup.cite a, #act sup.cite a")].map(a => +a.dataset.n));
+  $("#printsources").innerHTML = sourceOrder.map((id, i) => { const src = META.sources[id] || { title: id };
+    return used.has(i + 1) ? `<li value="${i + 1}">${esc(src.title)}${src.url && src.url.startsWith("https://doi.org/") ? " " + esc(src.url) : ""}</li>` : ""; }).join("");
+  if (B) $("#printmeta").innerHTML = `<b>${esc(B.cancer.label)}, ${esc(B.county.name)}</b>${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}<br>Public data, fetched from THL and Statistics Finland`;
+  $("#sourcelist").innerHTML = sourceOrder.map((id, i) => {
     const s = META.sources[id] || { title: id };
     const link = s.url ? ` <a href="${esc(s.url)}" target="_blank" rel="noopener">link</a>` : "";
     const api = s.api ? ` · <a href="${esc(s.api)}" target="_blank" rel="noopener">API</a>` : "";
@@ -360,6 +1001,7 @@ function project(features, W, H) {
   }).join("L") + "Z").join("")).join("") };
 }
 const signed = v => (v > 0 ? "+" : "") + v;
+const minus = s => String(s).replace("-", "−");
 function colorFor(d, strongAt = 3) {
   if (!d || d.gap == null) return "var(--nodata)";
   if (d.direction === "near") return "var(--near)";
@@ -371,60 +1013,78 @@ async function drawMap() {
   const mortality = state.layer === "mortality", chan = state.layer === "channel";
   const ind = mortality ? state.cancer : chan ? "channel" : META.cancers[state.cancer][state.layer];
   const token = ++mapToken;
-  const layer = await fetch(mortality ? `/api/mortality-map/${ind}` : chan ? "/api/channel-map" : `/api/map/${ind}`).then(r => r.json());
+  const layer = await get(mortality ? `/api/mortality-map/${ind}` : chan ? "/api/channel-map" : `/api/map/${ind}`);
   if (token !== mapToken) return;
+  const cancerLabel = META.cancers[state.cancer].label.toLowerCase();
+  $("#maptitle").textContent = chan ? "Share of doctor visits that go through public health centres"
+    : mortality ? `${layer.label} deaths against the expected number`
+    : state.layer === "survival" ? `Five-year relative survival against Finland, ${cancerLabel}`
+    : `Attendance in public screening against Finland, ${cancerLabel}`;
+  // One description of a county on this layer. The tooltip and the box under the map both use it.
+  const describe = d => chan
+    ? `<b>${esc(d.name)}</b><br>${d.latest}% of working-age visits public, ${d.year}<br>${d.public} public and ${d.occupational} occupational visits per 1000`
+    : mortality
+    ? `<b>${esc(d.name)}</b><br>SMR ${d.latest} in ${d.year}<br>95% interval ${d.low} to ${d.high}<br>${d.confidence === "high" ? "significant: the interval excludes 100" : "not significant: the interval includes 100"}`
+    : d.gap == null ? `<b>${esc(d.name)}</b><br>no data`
+    : `<b>${esc(d.name)}</b><br>${d.latest}% in ${d.year}<br>${signed(d.gap)} points against Finland in ${d.year}`
+      + (d.interval ? `<br>our rough 95% interval: ${signed(d.interval.low)} to ${signed(d.interval.high)} points` : "")
+      + `<br>same side in ${d.years_same_side} of ${d.n_years} years`;
   const feats = GEO.features.filter(f => layer.counties[f.properties.hyvinvointialue]);
   const P = project(feats, 340, 600);
-  $("#mapsvg").innerHTML = `<svg viewBox="0 0 ${P.w.toFixed(0)} ${P.h.toFixed(0)}" role="img" aria-label="Map of counties">${
+  const ariaDescribe = d => chan
+    ? `${d.name}: ${d.latest}% of working-age physician visits use public health centres in ${d.year}.`
+    : mortality
+    ? `${d.name}: SMR ${d.latest} in ${d.year}; 95% interval ${d.low} to ${d.high}.`
+    : d.gap == null ? `${d.name}: no data.`
+    : `${d.name}: ${d.latest}% in ${d.year}, ${signed(d.gap)} points against Finland.`;
+  $("#mapsvg").innerHTML = `<svg viewBox="0 0 ${P.w.toFixed(0)} ${P.h.toFixed(0)}" style="aspect-ratio:${P.w.toFixed(0)}/${P.h.toFixed(0)}" role="group" aria-label="Map of counties. Use the County selector to choose a county; the map is an alternative selector.">${
     feats.map(f => {
       const c = f.properties.hyvinvointialue, d = layer.counties[c];
       // Dashed: our rough interval of the survival gap includes zero, the county is not on the same side in
       // most years (attendance), or the 95% interval includes 100 (deaths).
       const weak = d.interval ? !d.interval.excludes_zero
         : d.persistence ? d.persistence !== "persistent" : d.confidence != null && d.confidence !== "high";
-      return `<path d="${P.path(f)}" data-c="${c}" fill="${colorFor(d, mortality ? 10 : 3)}" class="${c === state.county ? "sel" : ""} ${weak ? "low" : ""}"></path>`;
+      return `<path d="${P.path(f)}" data-c="${c}" tabindex="0" role="button" aria-label="${esc(ariaDescribe(d))}" aria-current="${c === state.county ? "true" : "false"}" fill="${colorFor(d, mortality ? 10 : 3)}" class="${c === state.county ? "sel" : ""} ${weak ? "low" : ""}"></path>`;
     }).join("")}</svg>`;
   const sel = $(`#mapsvg path[data-c="${state.county}"]`); if (sel) sel.parentNode.appendChild(sel);
   const tip = $("#tip");
   $("#mapsvg").querySelectorAll("path").forEach(p => {
     const d = layer.counties[p.dataset.c];
-    p.onclick = () => { state.county = p.dataset.c; $("#county").value = state.county; save(); render(); };
+    const pick = () => { state.county = p.dataset.c; $("#county").value = state.county; save(); render(); };
+    p.onclick = pick;
+    p.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); } };
     p.onmousemove = e => {
       tip.style.display = "block"; tip.style.left = e.clientX + 12 + "px"; tip.style.top = e.clientY + 12 + "px";
-      tip.innerHTML = chan
-        ? `<b>${esc(d.name)}</b><br>${d.latest}% of working-age visits public, ${d.year}<br>${d.public} public and ${d.occupational} occupational visits per 1000`
-        : mortality
-        ? `<b>${esc(d.name)}</b><br>SMR ${d.latest} in ${d.year}<br>95% interval ${d.low} to ${d.high}<br>${d.confidence === "high" ? "significant: the interval excludes 100" : "not significant: the interval includes 100"}`
-        : d.gap == null ? `<b>${esc(d.name)}</b><br>no data`
-        : `<b>${esc(d.name)}</b><br>${d.latest}% in ${d.year}<br>${signed(d.gap)} points against Finland in ${d.year}`
-          + (d.interval ? `<br>our rough 95% interval: ${signed(d.interval.low)} to ${signed(d.interval.high)} points` : "")
-          + `<br>same side in ${d.years_same_side} of ${d.n_years} years`;
+      tip.innerHTML = describe(d);
     };
     p.onmouseleave = () => tip.style.display = "none";
   });
-  if (chan) {
-    $("#legend").innerHTML = `
-      <span><i style="background:var(--below)"></i>3+ points more public than Finland</span><span><i style="background:var(--below-soft)"></i>2–3 more</span>
-      <span><i style="background:var(--near)"></i>near Finland (${layer.national}%)</span><span><i style="background:var(--above-soft)"></i>2–3 less</span><span><i style="background:var(--above)"></i>3+ less</span>
-      <span style="flex-basis:100%">Share of working-age physician visits that go through public health centres instead of occupational health care. Data: THL Sotkanet 293 and 2371.</span>`;
-    return;
+  // The box under the map: the chosen county in words, and how many counties are on the worse side.
+  const here = layer.counties[state.county], all = Object.values(layer.counties);
+  const behind = all.filter(d => d.direction === "below").length;
+  const ro = $("#readout");
+  ro.style.display = here ? "" : "none";
+  if (here) {
+    ro.style.borderLeftColor = colorFor(here, mortality ? 10 : 3);
+    ro.innerHTML = describe(here) + `<span class="count">${chan
+      ? `${behind} of ${all.length} counties have a larger public share of visits than Finland. A description of channel use, not of care quality.`
+      : mortality ? `${behind} of ${all.length} counties have more deaths than expected. Click a county to open it.`
+      : `${behind} of ${all.length} counties are below Finland on this map. Click a county to open it.`}</span>`;
   }
-  if (mortality) {
-    $("#legend").innerHTML = `
-      <span><i style="background:var(--below)"></i>10%+ more deaths than expected</span><span><i style="background:var(--below-soft)"></i>less than 10% more</span>
-      <span><i style="background:var(--near)"></i>as expected</span><span><i style="background:var(--above-soft)"></i>less than 10% fewer</span>
-      <span><i style="background:var(--above)"></i>10%+ fewer</span><span><i style="border:1px dashed var(--muted)"></i>95% interval includes 100</span>
-      <span style="flex-basis:100%">${esc(layer.label)} deaths against the number expected from the county's age structure (SMR), ${esc(Object.values(layer.counties)[0].year)}. Data: Statistics Finland.</span>`;
-    return;
-  }
+  // A five-step colour scale, the meaning of a dashed outline, and the long note behind a fold.
+  const scale = (caption, labels, dashed, note) => `<div>${caption}</div><div class="scale">${
+    ["below", "below-soft", "near", "above-soft", "above"].map((c, i) => `<span><i style="background:var(--${c})"></i>${labels[i]}</span>`).join("")}</div>${
+    dashed ? `<div class="dash"><i></i>Dashed outline: ${dashed}</div>` : ""}<details class="fold"><summary>About this map</summary><p>${note}</p></details>`;
   const survival = state.layer === "survival";
-  $("#legend").innerHTML = `
-    <span><i style="background:var(--below)"></i>3+ points below</span><span><i style="background:var(--below-soft)"></i>1–3 below</span>
-    <span><i style="background:var(--near)"></i>near Finland</span><span><i style="background:var(--above-soft)"></i>1–3 above</span>
-    <span><i style="background:var(--above)"></i>3+ above</span><span><i style="border:1px dashed var(--muted)"></i>${survival ? "our rough 95% interval includes zero" : "not on the same side in most years"}</span>
-    <span style="flex-basis:100%">${survival
-      ? "County five-year survival against Finland in the latest year. Sotkanet publishes no interval. The dashed outline uses our rough estimate from patient counts."
-      : "County attendance in the public screening programme against Finland in the latest year. A test in occupational or private care is not counted."} Map: Statistics Finland. Data: THL Sotkanet ${ind}.</span>`;
+  $("#legend").innerHTML = chan
+    ? scale("Points of public share against Finland", ["3+ more", "2–3 more", `near (${layer.national}%)`, "2–3 less", "3+ less"], "",
+        "Share of working-age physician visits that go through public health centres instead of occupational health care. Data: THL Sotkanet 293 and 2371. An equity hypothesis from one lymphoma study, not a measure of how well health centres work.")
+    : mortality
+    ? scale("Deaths against the expected number", ["10%+ more", "under 10% more", "as expected", "under 10% fewer", "10%+ fewer"], "the 95% interval includes 100",
+        `${esc(layer.label)} deaths against the number expected from the county's age structure (SMR), ${esc(Object.values(layer.counties)[0].year)}. Data: Statistics Finland.`)
+    : scale("Points against Finland", ["3+ below", "1–3 below", "near", "1–3 above", "3+ above"], survival ? "our rough 95% interval includes zero" : "not on the same side in most years",
+        (survival ? "County five-year relative survival against Finland in the latest year. Sotkanet publishes no interval. The dashed outline uses our rough estimate from patient counts."
+          : "County attendance in the public screening programme against Finland in the latest year. A test in occupational or private care is not counted.") + ` Map: Statistics Finland. Data: THL Sotkanet ${ind}.`);
 }
 
 // ---------- briefing ----------
@@ -432,26 +1092,78 @@ let B, briefToken = 0, mapToken = 0;
 async function drawBriefing() {
   // Quick changes of county or cancer can return out of order; only the latest request draws.
   const token = ++briefToken;
-  const next = await fetch(`/api/county/${state.county}?cancer=${state.cancer}`).then(r => r.json());
+  const next = await get(`/api/county/${state.county}?cancer=${state.cancer}`);
   if (token !== briefToken) return;
   B = next;
   sourceOrder = [];
-  drawHeadlines();
-  document.title = `${B.cancer.label} in ${B.county.name} | Pathway Watch`;
-  drawRoute();
+  document.title = `${B.cancer.label} in ${B.county.name} | Cancer Care Atlas`;
+  $("#query").textContent = `${B.cancer.label} in ${B.county.name}`;
+  $("#brieftext").style.display = "none";
   $("#summary").innerHTML = B.summary.sentences.map(s => {
     const srcs = [...new Set(s.fact_ids.map(id => B.facts[id].source))];
     return `<li>${esc(s.text)}${srcs.map(cite).join("")}</li>`;
   }).join("");
-  $("#writer").innerHTML = (B.summary.writer === "model" ? "Worded by the language model from computed facts." : "Written from computed facts by a fixed template.")
+  $("#summary").classList.toggle("tpl", B.summary.writer === "template");
+  const writer = B.summary.writer === "verda" ? "Verda Kimi wrote this from computed facts."
+    : B.summary.writer === "anthropic" ? "A language model wrote this from computed facts."
+    : "Written from computed facts by a fixed template.";
+  $("#writer").innerHTML = writer
     + (B.summary.removed.length ? ` <span class="removed">${B.summary.removed.length} sentence(s) removed: no source.</span>` : "");
   $("#caveats").textContent = B.pathway.caveats.join(" ");
-  drawTimeline(); drawPilot(); drawEquity(); drawNational(); drawChannel(); drawGoal3(); drawMirror(); drawChart(); drawAction(); drawSim(); drawMissing(); drawSources();
+  // On screen the reading notes fold away under the verdict; the printed brief keeps them as one paragraph.
+  $("#whylist").innerHTML = B.pathway.caveats.map(c => `<li>${esc(c)}</li>`).join("");
+  $("#whycount").textContent = `(${B.pathway.caveats.length} notes)`;
+  // Each part draws on its own. If the server sends an answer that one part cannot read, the other parts still show.
+  const broken = [];
+  for (const draw of [drawKpis, drawRoute, drawDecide, drawAction, drawCampaign, drawHeadlines, drawTimeline, drawNational, drawChart, drawInterpretation, drawChannel, drawEquity, drawMirror, drawPilot, drawRadiotherapy, drawMissing, drawGoal3, drawSources, drawPacket]) {
+    try { const r = draw(); if (r?.catch) r.catch(e => { console.error(e); notice(`Part of the page did not load (${e.message}). ${RESTART}`); }); }
+    catch (e) { console.error(e); broken.push(draw.name.replace("draw", "").toLowerCase()); }
+  }
+  if (broken.length) notice(`These parts did not load: ${broken.join(", ")}. The server may run older code than this page. ${RESTART}`);
 }
+
+// The four numbers a reader needs first. Each tile holds a label, one value and one line of plain words.
+function drawKpis() {
+  const c = B.chart, name = esc(B.county.name);
+  let tiles = [];
+  if (c && c.kind === "survival") {
+    const cv = c.county[c.year], nv = c.national[c.year], g = c.gap;
+    const side = g < 0 ? "below" : g > 0 ? "above" : "";
+    tiles = [
+      [`${name}, ${c.year}`, cv != null ? cv + "%" : "–", `Historical five-year relative survival${cite(c.source)}`, ""],
+      [`Finland, ${c.year}`, nv != null ? nv + "%" : "–", "Historical five-year relative survival", ""],
+      ["Gap to Finland", g != null ? `${minus(signed(g))} <small>points</small>` : "–", g < 0 ? "Below Finland" : g > 0 ? "Above Finland" : "Same as Finland", side],
+      c.interval
+        ? ["Exploratory interval", `${minus(signed(c.interval.low))} to ${minus(signed(c.interval.high))}`,
+           (!c.interval.excludes_zero ? "Includes zero; do not act on this signal alone"
+             : c.interval.strict_excludes_zero ? `Not a decision threshold; also excludes zero with the stricter ${c.interval.comparisons}-county check`
+             : `Not a decision threshold; includes zero with the stricter ${c.interval.comparisons}-county check`) + cite("survival_interval"), ""]
+        : ["Years on the same side", `${c.years_same_side} of ${c.n_years}`, "A description, not a test", ""],
+    ];
+  } else if (B.goal3) {
+    const r = B.goal3.rows.find(x => x.cause === state.cancer), n = B.nordic;
+    if (r) {
+      const sig = r.confidence === "high", side = !sig ? "" : r.direction === "worse" ? "below" : "above";
+      tiles = [
+        [`SMR, ${name}, ${r.years[0]} to ${r.years.at(-1)}`, r.smr, `Deaths against expected. 100 is as expected${cite(B.goal3.source)}`, side],
+        ["95% interval", `${r.low} to ${r.high}`, sig ? "Does not include 100" : "Includes 100, so the difference may be chance", ""],
+        ["Deaths per year", Math.round(r.deaths_per_year), `${esc(B.cancer.label)} in ${name}`, ""],
+      ];
+      if (n && n.gap != null) tiles.push(["Finland against Nordic", `${minus(signed(n.gap))} <small>points</small>`, `Five-year survival, ${esc(n.period)}${cite("nordcan")}`, n.gap < 0 ? "below" : "above"]);
+    }
+  }
+  $("#kpis").style.display = tiles.length ? "" : "none";
+  $("#kpis").innerHTML = tilesHtml(tiles);
+}
+// A tile is [label, value, one line of plain words, "below" | "above" | ""].
+const tilesHtml = tiles => tiles.map(([l, v, s, cls]) => `<div class="kpi ${cls}"><div class="l">${l}</div><div class="v">${v}</div><div class="s">${s}</div></div>`).join("");
 
 // The care pathway as a line with four stops. The marked stops are the ones the question is about.
 const STOPS = ["Detection", "Referral", "Diagnosis", "Treatment"];
-const MARKED = { detection: [0], watch: [0], later: [1, 2, 3], any: [0, 1, 2, 3], national: [0, 2], none: [], unknown: [] };
+// County aggregates can flag a screening-participation signal, but cannot locate a clinical
+// failure at referral, diagnosis or treatment. Those steps stay unmarked until the local pilot
+// supplies patient-pathway data.
+const MARKED = { detection: [0], watch: [0], later: [], any: [], national: [], none: [], unknown: [] };
 // What stands behind the question. For a survival gap: our rough 95% interval from patient counts, not a published one.
 // For attendance: how the gap has behaved over the published years, a description and not a test.
 const EVIDENCE = { interval_excludes_zero: "rough interval excludes zero", interval_includes_zero: "rough interval includes zero",
@@ -459,23 +1171,32 @@ const EVIDENCE = { interval_excludes_zero: "rough interval excludes zero", inter
 function drawRoute() {
   const p = B.pathway, marked = MARKED[p.step] || [];
   const cls = p.step === "watch" ? "warn" : "hit";
-  $("#route").innerHTML = STOPS.map((name, i) => `<div class="stop ${marked.includes(i) ? cls : ""} ${cls === "hit" && marked.includes(i) && marked.includes(i + 1) ? "seg" : ""}">${name}</div>`).join("");
-  const lead = { none: "No survival gap found.", unknown: "Not enough data to ask a pathway question.", watch: "Early warning. Question to investigate:" }[p.step] || "Question to investigate:";
-  const where = ["none", "unknown"].includes(p.step) ? "" : ` <b>${esc(p.label[0].toLowerCase() + p.label.slice(1))}</b>.`;
-  $("#verdict").innerHTML = `${lead}${where} <span class="badge ${["persistent", "interval_excludes_zero"].includes(p.evidence) ? "high" : ""}">${EVIDENCE[p.evidence] || esc(p.evidence)}</span>`;
+  $("#route").innerHTML = STOPS.map((name, i) => '<div class="stop ' + (marked.includes(i) ? cls : "") + ' ' + (cls === "hit" && marked.includes(i) && marked.includes(i + 1) ? "seg" : "") + '">' + name + '<small>' + (marked.includes(i) ? (cls === "warn" ? "early warning" : "in question") : "") + '</small></div>').join("");
+  const direct = ["detection", "watch"].includes(p.step);
+  const lead = direct
+    ? "Screening-participation signal to audit. It does not show that a pathway step failed."
+    : p.step === "none" ? "No public-data signal. This is not proof of equal care."
+    : p.step === "unknown" ? "Public data cannot support a pathway hypothesis."
+    : "Public data cannot locate the pathway step. Start a local pathway baseline before changing care.";
+  const where = direct ? ` <b>${esc(p.label[0].toLowerCase() + p.label.slice(1))}</b>.` : "";
+  // The second register: deaths from the same cancer, read in backend/analysis.py deaths_check().
+  const deathsBadge = { agree: "deaths agree", not_confirmed: "deaths do not confirm", too_few: "too few deaths to check" }[p.deaths];
+  $("#verdict").innerHTML = `<span>${lead}${where}</span> <span class="badge">${EVIDENCE[p.evidence] || esc(p.evidence)}</span>${deathsBadge ? ` <span class="badge">${deathsBadge}</span>` : ""}`;
 }
 
 function drawHeadlines() {
   const h = HL, sc = h.screening, nd = h.nordic;
   $("#headlines").innerHTML = `
-    <div class="hl-card"><div class="k">Referral</div><div class="n">127 against 76 days</div>
-      Median time from first symptoms to treatment in a Finnish study of 160 lymphoma patients: first contact at a public health centre against private or occupational care${cite("kuitunen_2026")}. The public group was older. ${h.channel.national}% of working-age doctor visits are public; ${esc(h.channel.most)} is highest at ${h.channel.most_share}%${cite("sotkanet:293")}.</div>
+    <div class="hl-card"><div class="k">One lymphoma study, not a referral metric</div><div class="n">127 against 76 days</div>
+      <p>Median time from self-reported first symptoms to treatment in a Finnish lymphoma study: ${EV.timeline.groups.public.patients} patients whose first appointment was at a public health centre against ${EV.timeline.groups.private.patients} in private or occupational care. This comparison does not establish that care route caused the difference${cite("kuitunen_2026")}.</p>
+      <p class="more">These are ${EV.timeline.study.compared} of the ${EV.timeline.study.patients} patients in the study. The public group was older. ${h.channel.national}% of working-age doctor visits are public; ${esc(h.channel.most)} is highest at ${h.channel.most_share}%${cite("sotkanet:293")}.</p></div>
     <div class="hl-card"><div class="k">Detection</div><div class="n">${esc(sc[0].lowest)}</div>
-      Lowest attendance in the public ${esc(sc[0].cancer.toLowerCase())} screening programme (${sc[0].value}%)${cite(sc[0].source)} and ${esc(sc[1].lowest === sc[0].lowest ? "also in" : sc[1].lowest + " lowest in")} the ${esc(sc[1].cancer.toLowerCase())} programme (${sc[1].value}%)${cite(sc[1].source)}, ${sc[1].year}. ${sc.map(x => `${esc(x.cancer)} programme: ${esc(x.lowest)} was lowest in ${x.lowest_years} of ${x.n_years} published years.`).join(" ")} The figures count the public programmes only. A Finnish study found mammograms outside the programme, most among upper-level employees${cite("fuhrmann_2024")}. The strategy sets ${sc[0].target}% in every county${cite("strategy")}: ${sc[0].below_target === sc[0].n ? "no county reaches it" : sc[0].below_target + " of " + sc[0].n + " counties miss it"} for bowel screening.</div>
-    <div class="hl-card"><div class="k">Outcome</div><div class="n">${nd[0].gap} points</div>
-      Five-year survival for ${esc(nd[0].label.toLowerCase())} in Finland against the Nordic level. ${nd.slice(1).map(b => `${esc(b.label)} ${b.gap}`).join(", ")}${cite("nordcan")}.</div>
-    <div class="hl-card"><div class="k">Data gap</div><div class="n">${h.mirror.regions} vs 0</div>
-      Sweden reports treatment within target time for all ${h.mirror.regions} regions (${h.mirror.sweden}% in 2025)${cite("rcc_svf_2025")}. Finland reports it for none of its ${h.mirror.finland_counties} counties.</div>`;
+      <p>Lowest attendance in the public ${esc(sc[0].cancer.toLowerCase())} screening programme (${sc[0].value}%)${cite(sc[0].source)} and ${esc(sc[1].lowest === sc[0].lowest ? "also in" : sc[1].lowest + " lowest in")} the ${esc(sc[1].cancer.toLowerCase())} programme (${sc[1].value}%)${cite(sc[1].source)}, ${sc[1].year}.</p>
+      <p class="more">${sc.map(x => `${esc(x.cancer)} programme: ${esc(x.lowest)} was lowest in ${x.lowest_years} of ${x.n_years} published years.`).join(" ")} The figures count the public programmes only. A Finnish study found mammograms outside the programme, most among upper-level employees${cite("fuhrmann_2024")}. The strategy sets ${sc[0].target}% in every county${cite("strategy")}: ${sc[0].below_target === sc[0].n ? "no county reaches it" : sc[0].below_target + " of " + sc[0].n + " counties miss it"} for bowel screening.</p></div>
+    <div class="hl-card"><div class="k">Outcome</div><div class="n">${minus(nd[0].gap)} points</div>
+      <p>Five-year survival for ${esc(nd[0].label.toLowerCase())} in Finland against the Nordic level. ${nd.slice(1).map(b => `${esc(b.label)} ${minus(b.gap)}`).join(", ")}${cite("nordcan")}.</p></div>
+    <div class="hl-card"><div class="k">Missing data</div><div class="n">${h.mirror.regions} against 0</div>
+      <p>Sweden reports treatment within target time for all ${h.mirror.regions} regions (${h.mirror.sweden}% in 2025)${cite("rcc_svf_2025")}. Finland reports it for none of its ${h.mirror.finland_counties} counties.</p></div>`;
 }
 
 // The lymphoma study, step by step. One bar per route on the same scale of days.
@@ -491,22 +1212,86 @@ function drawTimeline() {
     <td class="num extra">${s.extra > 0 ? "+" + s.extra : s.extra}</td><td>${esc(s.owner[0].toUpperCase() + s.owner.slice(1))}</td></tr>`).join("");
   $("#timelinebody").innerHTML = `
     <p class="lead">In figure 1 of one Finnish study of lymphoma patients, the route through a public health centre ends ${t.total.extra} days later than the route through private or occupational care. ${o.patient.extra} of these days passed before the first contact, ${o["primary care"].extra} in primary care, and ${o.hospital.extra} between the referral and the start of treatment.${cite(t.source)}</p>
-    <div class="tl">${row("public")}${row("private")}</div>
+    <div class="split2"><div><div class="tl">${row("public")}${row("private")}</div>
     <div class="legend"><span><i class="patient"></i>Before the first contact</span><span><i class="primary"></i>Primary care: first contact to referral</span><span><i class="hospital"></i>Hospital: referral to start of treatment</span></div>
-    <div class="tablewrap"><table class="g3" style="margin-top:16px"><thead><tr><th>Step</th><th>Public health centre, days</th><th>Private or occupational, days</th><th>Extra days, public</th><th>Who owns the step</th></tr></thead><tbody>${rows}</tbody></table></div>
-    <p class="caveat">${esc(EV.timeline.outcome.text)}${cite(EV.timeline.outcome.source)}</p>
-    <p class="caveat">Limits: one lymphoma type and 160 patients. The public group was older. The patients gave the date of the first symptoms themselves. The paper tests the whole interval only (p = ${t.p_value_total}), not each step. Its medians for the whole interval are ${t.groups.public.median_total} and ${t.groups.private.median_total} days. The days above are from figure 1 of the paper, which does not say if they are means or medians, and the app computes the length of each step from them. So the picture shows where the days add up in this study. It does not show the cause, and it does not describe other cancers or ${esc(B.county.name)}.</p>`;
+    <p class="caveat">${esc(EV.timeline.outcome.text)}${cite(EV.timeline.outcome.source)}</p></div>
+    <div class="tablewrap"><table class="g3"><thead><tr><th>Step, in days</th><th>Public</th><th>Private</th><th>Extra</th><th>Owner</th></tr></thead><tbody>${rows}</tbody></table><p class="caveat">Private includes occupational care. Extra is the public route minus the private route.</p></div></div>
+    ${queuesBox()}
+    <p class="caveat wide"><b>Three pairs of numbers, one comparison.</b> For the whole interval the paper gives medians of ${t.groups.public.median_total} and ${t.groups.private.median_total} days and means of ${t.means.public} and ${t.means.private} days. Figure 1 ends at ${t.total.public} and ${t.total.private} days, close to the means. A few very long waits, up to ${t.study.range_days[1].toLocaleString("en")} days, raise a mean. So the typical patient waited the median, and the bars show where the days of the mean add up.</p>
+    <p class="caveat wide">Limits: one lymphoma type. The two routes hold ${t.study.compared} of the ${t.study.patients} patients. The others started at ${Object.entries(t.study.not_compared).map(([k, v]) => `${k} (${v})`).join(", ")}. The public group was older. The picture shows where the days add up in this study. It does not show the cause, and it does not describe other cancers or ${esc(B.county.name)}.</p>
+    <details class="fold"><summary>More limits</summary><p class="caveat wide">The patients gave the date of the first symptoms themselves. The paper tests the whole interval only (p = ${t.p_value_total}), not each step. The days above are from figure 1 of the paper, which does not say if they are means or medians, and the app computes the length of each step from them. We checked the patient counts, the medians, the means and the p-value against the open full text of the paper. The days of each step exist only in the figure, and we copied them by hand.</p></details>`;
+}
+
+// The county's own queues at two of the study's steps. General queues, not cancer queues.
+function queuesBox() {
+  const q = B.queues || [];
+  if (!q.length) return "";
+  const num = (v, u) => u === "%" ? `${v}%` : `${v}`;
+  const rows = q.map(x => `<tr><td>${esc(x.step)}<small>${esc(x.what)}, ${x.year}</small></td>
+    <td class="num"><b>${num(x.county, x.unit)}</b></td><td class="num">${num(x.national, x.unit)}</td>
+    <td>${x.side === "near" ? "near Finland" : x.side === "longer" ? "<b>longer</b> than Finland" : "shorter than Finland"}<small>rank ${x.rank} of ${x.of}, 1 = longest; same side in ${x.years_same_side} of ${x.n_years} years</small></td></tr>`).join("");
+  const sq = B.specialist_queues || [];
+  const srows = sq.map(x => `<tr><td>${esc(x.step)}<small>THL specialty ${esc(x.specialty)}${x.shared ? ", HUS figure for all of Uusimaa" : ""}</small></td>
+    <td class="num"><b>${x.share_over_90 == null ? "–" : x.share_over_90 + "%"}</b></td><td class="num">${x.national_over_90 ?? "–"}%</td>
+    <td>${x.share_over_90 == null ? `too few patients waiting (${x.waiting_months} patient-months), or coded under another specialty` : x.share_over_90 > x.national_over_90 * 1.5 ? "<b>longer</b> than Finland" : x.share_over_90 < x.national_over_90 / 1.5 ? "shorter than Finland" : "near Finland"}${x.rank ? `<small>rank ${x.rank} of ${x.of}, 1 = longest; ${x.waiting_months} patient-months</small>` : ""}</td></tr>`).join("");
+  const specialist = sq.length ? `<h3 class="sub">Specialist queues on the ${esc(B.cancer.label.toLowerCase())} pathway: share waiting more than 90 days${cite("thl_eshjono")}</h3>
+    <div class="tablewrap"><table class="g3"><thead><tr><th>Step and specialty</th><th>${esc(B.county.name)}</th><th>Finland</th><th>Reading</th></tr></thead><tbody>${srows}</tbody></table></div>
+    <p class="caveat">Patients in the non-urgent queue of each specialty, pooled over six month-ends (${esc(sq[0].period)}). A cancer referral is often urgent and then not in this queue, so a long queue shows where capacity is short, not how long cancer patients wait. "Longer" means at least one and a half times the national share.</p>` : "";
+  return `<div class="queues">${specialist}<h3 class="sub">In ${esc(B.county.name)}: the queues at two of these steps${q.map(x => cite(x.source)).join("")}</h3>
+    <div class="tablewrap"><table class="g3"><thead><tr><th>Step and queue</th><th>${esc(B.county.name)}</th><th>Finland</th><th>Reading</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <p class="caveat">These are queues for all patients, not for cancer. A patient with alarm symptoms should not wait in the non-urgent queue, so a short queue does not prove fast cancer referral, and a long one does not prove slow cancer referral. The counties record the queues themselves, so part of a difference can come from recording. Use the row as the first question to the county, beside the days counted in the local step.</p></div>`;
 }
 
 // What the tool computes after a county connects its own records. The demo uses public data only.
 function drawPilot() {
   const p = EV.pilot, t = EV.timeline;
-  const rows = t.steps.map((s, i) => `<li><span class="line none">${i + 1}</span><div>${esc(s.name)}<small>${esc(s.record)} In the lymphoma study: ${s.public_days} days through a public health centre, ${s.private_days} through private or occupational care.</small></div></li>`).join("");
+  const rows = t.steps.map((s, i) => `<li><span class="line none">${i + 1}</span><div>${esc(s.name)}<small>${esc(s.record)} Lymphoma study: ${s.public_days} days public, ${s.private_days} days private or occupational.</small></div></li>`).join("");
+  const protocol = [
+    ["Cohort", `${p.cohort.include} Exclude: ${p.cohort.exclude}`],
+    ["Minimum fields", p.fields.join(" ")],
+    ["Data quality", p.quality],
+    ["Privacy", p.privacy],
+    ["Small numbers", p.small_numbers],
+    ["Governance", p.governance],
+    ["Decision rule", p.decision_rule],
+  ].map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("");
   $("#pilotbody").innerHTML = `
-    <p class="lead">No public source gives these five intervals for any county. A county holds most of the dates in its own records. ${esc(p.basis)}${cite(p.basis_source)}</p>
-    <ul class="rows">${rows}</ul>
-    <p class="target">${esc(p.output)}</p>
-    <p class="caveat">${esc(p.legal)} The records named above are our reading of the registers, and the county confirms the fields. ${esc(p.host)}${cite(p.host_source)} The study values come from one lymphoma study${cite(t.source)}.</p>`;
+    <p class="lead">${esc(p.title)}. No public source gives these intervals for any county. A county holds most of the dates in its own records. ${esc(p.basis)}${cite(p.basis_source)}</p>
+    <div class="split2"><ul class="rows tight">${rows}</ul>
+    <div><p class="target" style="margin-top:0">${esc(p.output)}</p>
+    <p class="caveat">${esc(p.legal)} The records named above are our reading of the registers, and the county confirms the fields. ${esc(p.host)}${cite(p.host_source)} The study values come from one lymphoma study${cite(t.source)}.</p></div></div>`;
+  const plan = p.plan_90.map(([when, title, text]) => `<li><div class="when">${esc(when)}</div><div class="t">${esc(title)}</div>${esc(text)}</li>`).join("");
+  $("#pilotbody").innerHTML += `<div class="actside" style="margin-top:16px"><dl>${protocol}</dl></div>
+    <h3 class="sub">The first 90 days with a county</h3>
+    <ol class="plan">${plan}<li><div class="when">Day 90</div><div class="t">Go or no go</div>${esc(p.go_no_go)}</li></ol>
+    <p class="caveat">This plan is our proposal. No county, clinician or data protection officer reviewed it.${cite("local_step")}</p>`;
+}
+
+// Where the county's patients get radiotherapy, and how far the county reaches from that unit.
+function radiotherapyAccess() {
+  const a = B.radiotherapy_access, all = EV.radiotherapy_access || [];
+  const where = !a.verified
+    ? `<p><b>${esc(B.county.name)}:</b> no public source that we found names the unit that treats this county's patients. The county can state it in one line.${cite("rt_units")}</p>`
+    : `<p><b>${esc(B.county.name)}:</b> treated at ${esc(a.unit)}, ${esc(a.city)}${a.in_county ? ", inside the county" : ", outside the county"}. The farthest edge of the county is about <b>${a.farthest_km} km</b> from the unit in a straight line; the road is longer. <span class="caveat">${esc(a.basis)} <a href="${esc(a.url)}" target="_blank" rel="noopener">Source</a>.</span>${cite("rt_units")}</p>`;
+  const far = a.verified && a.farthest_km >= 200
+    ? `<p>A curative course takes several weeks of daily visits, so the distance falls on the patient every day. For early breast cancer after surgery, five fractions in one week controlled the cancer as well as fifteen fractions in three weeks in a randomised trial${cite("fast_forward")}. First question to the unit: what share of eligible courses use such short schedules, and how do patients from the far end of ${esc(B.county.name)} travel or stay.</p>` : "";
+  const rows = all.map(x => `<tr${x.county === B.county.code ? ' class="me"' : ""}><td>${esc(META.counties.find(c => c.code === x.county)?.name || x.county)}</td>
+    <td>${x.verified ? esc(x.city) + (x.in_county ? "" : " (outside)") : "not verified"}</td><td class="num">${x.farthest_km ?? "?"}</td></tr>`).join("");
+  return `<div class="queues"><h3 class="sub">Where the patients get radiotherapy</h3>${where}${far}
+    <details class="fold"><summary>All 22 counties, farthest first</summary><div class="tablewrap"><table class="g3"><thead><tr><th>County</th><th>Unit</th><th>Farthest edge, km</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <p class="caveat">Straight line from the hospital to the farthest point of the county outline on this map, rounded to 10 km. It is a lower bound for the longest trip, not a travel time, and it says nothing about how many people live at the far edge.</p></details></div>`;
+}
+
+function drawRadiotherapy() {
+  const r = EV.radiotherapy;
+  const stamps = r.timestamps.map((x, i) => `<li><span class="line none">${i + 1}</span><div><b>${esc(x.name)}</b><small>${esc(x.field)}.<br>Owner: ${esc(x.owner)}.</small></div></li>`).join("");
+  const measures = r.measures.map(x => `<li>${esc(x)}</li>`).join("");
+  $("#radiotherapybody").innerHTML = `
+    <p class="lead">${esc(r.purpose)} <b>Status:</b> ${esc(r.status)}.${cite("radiotherapy_pilot")}</p>
+    ${radiotherapyAccess()}
+    <div class="split2"><div><h3 class="sub">Cohort and timestamps</h3><p>${esc(r.cohort.include)} <span class="caveat">Exclude: ${esc(r.cohort.exclude)}</span></p><ul class="rows tight">${stamps}</ul></div>
+    <div><h3 class="sub">Measures to release${r.sources.filter(id => id !== "local_step").map(cite).join("")}</h3><ul>${measures}</ul><p class="caveat">${esc(r.stratifiers)}</p></div></div>
+    <div class="actside" style="margin-top:16px"><dl><dt>Data quality</dt><dd>${esc(r.quality)}</dd><dt>Privacy</dt><dd>${esc(r.privacy)}</dd><dt>Governance</dt><dd>${esc(r.governance)}</dd><dt>Decision rule</dt><dd>${esc(r.decision_rule)}</dd><dt>Limit</dt><dd>${esc(r.limits)}</dd></dl></div>`;
 }
 
 function drawEquity() {
@@ -525,35 +1310,34 @@ function drawEquity() {
 
 function drawChannel() {
   const c = B.channel;
-  if (!c) { $("#channel").style.display = "none"; return; }
-  $("#channel").style.display = "";
+  if (!c) { $("#channelbody").innerHTML = "<p>No data for this county.</p>"; return; }
   const f = id => B.facts[id], src = id => cite(f(id).source);
-  const occ = 100 - c.public_share, natOcc = 100 - c.national.public_share;
   $("#channelbody").innerHTML = `
     <p class="lead">${esc(f("channel.roadmap").text)}.${src("channel.roadmap")}</p>
     <div class="split">
       <div><div class="bignum">${c.public_share}%</div>of working-age physician visits in ${esc(B.county.name)} go through public health centres, against ${c.national.public_share}% in Finland (${c.year}).${src("channel.share")}
-        <div style="margin-top:6px;color:var(--muted);font-size:13px">Rank ${c.rank} of ${c.n} counties, 1 = most reliant on the public channel.</div></div>
-      <div class="bars" style="grid-template-columns:110px 1fr 40px">
+        <div class="note" style="margin-top:6px">Position ${c.rank} of ${c.n} by public share, 1 = largest. This orders channel use. It does not rank public health centres.</div></div>
+      <div class="bars" style="grid-template-columns:110px 1fr 44px">
         <span>${esc(B.county.name)}</span><div class="bar pub"><span style="width:${c.public_share}%"></span></div><span>${c.public_share}%</span>
         <span>Finland</span><div class="bar pub"><span style="width:${c.national.public_share}%"></span></div><span>${c.national.public_share}%</span>
         <span style="color:var(--muted)">Private visits</span><div class="bar"><span style="width:${c.private_share}%"></span></div><span>${c.private_share ?? "–"}%</span>
       </div>
     </div>
-    <p class="caveat">Visits per 1000 people aged 15–64: ${c.public_visits} public, ${c.occupational_visits} occupational${src("channel.visits")}. Private: share of all residents with a Kela-reimbursed private doctor visit${cite("sotkanet:692")}. This measures channel use, not coverage: no public source gives occupational health coverage per county. Most cancer patients are over 65 and outside occupational health, so they depend on the public channel everywhere. The county pattern does not track survival in this data, so read it as a description of who uses which channel, not as proof of a delay.</p>`;
+    <p class="caveat">Visits per 1000 people aged 15–64: ${c.public_visits} public, ${c.occupational_visits} occupational${src("channel.visits")}. Private: share of all residents with a Kela-reimbursed private doctor visit${cite("sotkanet:692")}. This measures channel use, not coverage: no public source gives occupational health coverage per county. Most cancer patients are over 65 and outside occupational health, so they depend on the public channel everywhere. The county pattern does not track survival in this data, so read it as a description of who uses which channel, not as proof of a delay. The 127 against 76 days come from one lymphoma study, and the public group was older. The hypothesis for a county to test: patients who start at a public health centre wait longer before referral. The pilot measures exactly that, per route.</p>`;
 }
 
 function drawMirror() {
   const m = B.mirror;
-  const rows = m.regions.map(r => `<span>${esc(r.region)}</span><div class="bar"><span style="width:${r["2025"]}%"></span><i class="t" style="left:${m.target}%"></i></div><span>${r["2025"]}%</span>`).join("");
-  const fin = META.counties.slice(0, 6).map(c => `<span>${esc(c.name)}</span><div class="bar empty"></div><span>?</span>`).join("");
+  const swe = r => `<span>${esc(r.region)}</span><div class="bar"><span style="width:${r["2025"]}%"></span><i class="t" style="left:${m.target}%"></i></div><span>${r["2025"]}%</span>`;
+  const half = Math.ceil(m.regions.length / 2);
+  const fin = META.counties.slice(0, 4).map(c => `<span>${esc(c.name)}</span><div class="bar empty"></div><span>?</span>`).join("");
   const can = m.cancer ? ` For ${esc(B.cancer.label.toLowerCase())} (${esc(m.cancer.svf)}), ${m.cancer.share}% of ${m.cancer.n.toLocaleString("en")} Swedish patients started treatment within the lead time in 2025.${cite(m.source)}` : "";
   const prop = m.proposal.map(p => `<li><span class="line">${esc(p.measure)}</span><div>${esc(p.action)}${cite("roadmap")}<small>Roadmap page ${p.page}. Who acts: ${esc(p.actor)}.</small></div></li>`).join("");
   $("#mirrorbody").innerHTML = `
-    <p class="lead">Sweden measures, for every region, the share of patients who start treatment within the target time of their cancer pathway. In 2025 it was ${m.national["2025"].share}% nationally against a target of ${m.target}%, and ranged from ${m.regions[0]["2025"]}% in ${esc(m.regions[0].region)} to ${m.regions.at(-1)["2025"]}% in ${esc(m.regions.at(-1).region)}.${cite(m.source)}${can} ${esc(m.delay.text)}${cite(m.delay.source)}</p>
-    <div class="split">
-      <div><h3 class="sub" style="margin-top:0">Sweden, 2025</h3><div class="bars">${rows}</div><p class="caveat">Line: the ${m.target}% target.</p></div>
-      <div><h3 class="sub" style="margin-top:0">Finland, any year</h3><div class="bars">${fin}<span style="color:var(--muted)">… ${m.finland_counties - 6} more</span><span></span><span></span></div>
+    <p class="lead">Sweden measures, for every region, the share of patients who start treatment within the target time of their cancer pathway. In 2025 it was ${m.national["2025"].share}% nationally against a target of ${m.target}%, and ranged from ${m.regions[0]["2025"]}% in ${esc(m.regions[0].region)} to ${m.regions.at(-1)["2025"]}% in ${esc(m.regions.at(-1).region)}.${cite(m.source)}</p>
+    <div class="split mirror">
+      <div><h3 class="sub" style="margin-top:0">Sweden, 2025</h3><div class="split2"><div class="bars">${m.regions.slice(0, half).map(swe).join("")}</div><div class="bars">${m.regions.slice(half).map(swe).join("")}</div></div><p class="caveat">Line: the ${m.target}% target.${can} ${esc(m.delay.text)}${cite(m.delay.source)}</p></div>
+      <div><h3 class="sub" style="margin-top:0">Finland, any year</h3><div class="bars">${fin}<span style="color:var(--muted)">… ${m.finland_counties - 4} more</span><span></span><span></span></div>
         <p class="caveat">No public source gives this number for any Finnish county.${cite("thl_21_2016")}</p>
         <h3 class="sub">Proposal</h3><ul class="rows">${prop}</ul></div>
     </div>`;
@@ -561,31 +1345,30 @@ function drawMirror() {
 
 function drawGoal3() {
   const g = B.goal3;
-  if (!g) { $("#goal3").style.display = "none"; return; }
-  $("#goal3").style.display = "";
+  if (!g) { $("#goal3body").innerHTML = "<p>No data for this county.</p>"; return; }
   const word = { worse: "more than expected", better: "fewer than expected" };
   // Only a 95% interval that leaves out 100 supports "more" or "fewer".
   const rows = g.rows.map(r => { const sig = r.confidence === "high"; return `<tr>
       <td>${esc(r.label)}</td><td class="num">${Math.round(r.deaths_per_year)}</td>
       <td class="num"><b>${r.smr}</b> <span style="color:var(--muted)">(${r.low}–${r.high})</span></td>
-      <td><span class="pill ${sig ? r.direction : "near"}">${sig ? word[r.direction] : "within the expected range"}</span></td><td>${sig ? "yes" : "no"}</td></tr>`; }).join("");
+      <td><span class="pill ${sig ? r.direction : "near"}">${sig ? word[r.direction] : "within the expected range"}</span></td></tr>`; }).join("");
   const t = B.facts[g.target_fact];
   const surv = g.survival.map(b => `<tr><td>${esc(b.label)}</td><td class="num">${b.finland != null ? b.finland + "%" : "not read yet"}</td>
       <td class="num">${b.nordic ?? (b.sweden != null ? b.sweden + "% (Sweden only)" : "–")}${b.nordic != null ? "%" : ""}</td>
       <td class="num">${b.gap ?? "–"}</td><td class="num">${b.target != null ? "+" + b.target + " points" : ""}</td></tr>`).join("");
-  $("#goal3body").innerHTML = `<table class="g3"><thead><tr><th>Cancer</th><th>Deaths per year</th><th>SMR (95% interval)</th><th></th><th>Significant</th></tr></thead>
-    <tbody>${rows}</tbody></table>
-    <div class="target">${esc(t.text)}.${cite(g.source)}${cite("strategy")}</div>
-    <h3 class="sub">Five-year survival in Finland against the Nordic level${cite("nordcan")}</h3>
-    <table class="g3"><thead><tr><th>Cancer</th><th>Finland</th><th>Nordic level</th><th>Gap (points)</th><th>Goal 3 target${cite("strategy")}</th></tr></thead><tbody>${surv}</tbody></table>
-    <p class="caveat">National values only. NORDCAN gives no county split. Survival for patients diagnosed ${esc(g.survival[0].period)}, both sexes weighted by cases.</p>
-    <p class="caveat">SMR 100 means as many deaths as the county's age structure predicts. Significant means that the 95% interval excludes 100. With ${META.counties.length} counties, about one county per cancer crosses a 95% limit by chance. Years ${g.rows[0].years[0]} to ${g.rows[0].years.at(-1)} pooled. Lung, pancreatic and liver cancer are the poor-prognosis cancers in Goal 3, indicator 1.${cite(g.source)}</p>`;
+  $("#goal3body").innerHTML = `<div class="split2"><div><div class="tablewrap"><table class="g3"><thead><tr><th>Cancer</th><th>Deaths per year</th><th>SMR (95% interval)</th><th>Against expected</th></tr></thead>
+    <tbody>${rows}</tbody></table></div>
+    <div class="target">${esc(t.text)}.${cite(g.source)}${cite("strategy")}</div></div>
+    <div><h3 class="sub">Five-year survival in Finland against the Nordic level${cite("nordcan")}</h3>
+    <div class="tablewrap"><table class="g3"><thead><tr><th>Cancer</th><th>Finland</th><th>Nordic level</th><th>Gap (points)</th><th>Goal 3 target${cite("strategy")}</th></tr></thead><tbody>${surv}</tbody></table></div>
+    <p class="caveat">National values only. NORDCAN gives no county split. Survival for patients diagnosed ${esc(g.survival[0].period)}, both sexes weighted by cases. The Sotkanet value for Finland on the view Finding covers ten diagnosis years and uses another method, so the two values for one cancer differ. Compare each value only inside its own source.</p></div></div>
+    <p class="caveat">SMR 100 means as many deaths as the county's age structure predicts. The table says more or fewer only when the 95% interval excludes 100. With ${META.counties.length} counties, about one county per cancer crosses a 95% limit by chance. Years ${g.rows[0].years[0]} to ${g.rows[0].years.at(-1)} pooled. Lung, pancreatic and liver cancer are the poor-prognosis cancers in Goal 3, indicator 1.${cite(g.source)}</p>`;
 }
 
 function drawChart() {
   if (!B.chart) { $("#chartsvg").innerHTML = "<p>No data.</p>"; $("#chartlegend").innerHTML = ""; return; }
   if (B.chart.kind === "smr") return drawSmrChart();
-  const c = B.chart, W = 420, H = 220, L = 34, R = 18, T = 10, Bm = 26;
+  const c = B.chart, W = 420, H = 220, L = 38, R = 18, T = 10, Bm = 26;
   // Show only the years the county has data for, so both lines cover the same span.
   const years = Object.keys(c.county).map(Number).sort();
   const national = Object.fromEntries(Object.entries(c.national).filter(([y]) => years.includes(+y)));
@@ -594,21 +1377,23 @@ function drawChart() {
   let lo = Math.floor(Math.min(...vals) - 2), hi = Math.ceil(Math.max(...vals) + 2);
   const x = y => L + (years.length === 1 ? 0 : (y - years[0]) / (years[years.length - 1] - years[0]) * (W - L - R));
   const yv = v => T + (hi - v) / (hi - lo) * (H - T - Bm);
-  const line = (obj, color, dash = "") => {
+  const line = (obj, color) => {
     const pts = Object.entries(obj).map(([yr, v]) => [x(+yr), yv(v), v, yr]);
-    return `<path d="M${pts.map(p => p[0].toFixed(1) + "," + p[1].toFixed(1)).join("L")}" fill="none" stroke="${color}" stroke-width="2.5" ${dash}/>` +
-      pts.map(p => `<circle cx="${p[0]}" cy="${p[1]}" r="3" fill="${color}"><title>${p[3]}: ${p[2]}%</title></circle>`).join("");
+    return `<path d="M${pts.map(p => p[0].toFixed(1) + "," + p[1].toFixed(1)).join("L")}" fill="none" stroke="${color}" stroke-width="2.5"/>` +
+      pts.map(p => `<circle cx="${p[0]}" cy="${p[1]}" r="3.5" fill="${color}"><title>${p[3]}: ${p[2]}%</title></circle>`).join("");
   };
   const ticks = []; for (let v = Math.ceil(lo / 5) * 5; v <= hi; v += 5) ticks.push(v);
-  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Survival over time">` +
+  const accessible = years.map(y => `${y}: ${B.county.name} ${c.county[y]}%, Finland ${national[y]}%`).join(". ");
+  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Five-year relative survival trend. ${esc(accessible)}">` +
     ticks.map(v => `<line x1="${L}" x2="${W - R}" y1="${yv(v)}" y2="${yv(v)}" stroke="var(--line)"/><text x="${L - 6}" y="${yv(v) + 4}" text-anchor="end">${v}%</text>`).join("") +
     years.map(y => `<text x="${x(y)}" y="${H - 8}" text-anchor="middle">${y}</text>`).join("");
   svg += line(national, "var(--muted)") + line(c.county, "var(--accent)") + "</svg>";
   $("#chartsvg").innerHTML = svg;
-  $("#charttitle").innerHTML = `Five-year survival, ${esc(B.cancer.label.toLowerCase())}${cite(c.source)}`;
+  $("#charttitle").innerHTML = `Five-year relative survival, ${esc(B.cancer.label.toLowerCase())}${cite(c.source)}`;
   const iv = c.interval;
-  const rough = iv ? `<span style="flex-basis:100%">Gap in ${c.year}: ${signed(c.gap)} points. Our rough 95% interval: ${signed(iv.low)} to ${signed(iv.high)} points, from about ${iv.patients} patients${cite("survival_interval")}. It is not a published interval, and the true interval is wider. ${esc(B.county.name)} was on the same side of Finland in ${c.years_same_side} of ${c.n_years} published years. That count is a description, not a test.</span>` : "";
+  const rough = iv ? `<span style="flex-basis:100%">Gap in ${c.year}: ${signed(c.gap)} points. Our rough 95% interval: ${signed(iv.low)} to ${signed(iv.high)} points, from about ${iv.patients} patients${cite("survival_interval")}. It is not a published interval, and the true interval is wider. With the stricter limit for ${iv.comparisons} counties compared at once: ${signed(iv.strict_low)} to ${signed(iv.strict_high)} points. ${esc(B.county.name)} was on the same side of Finland in ${c.years_same_side} of ${c.n_years} published years. That count is a description, not a test.</span>` : "";
   $("#chartlegend").innerHTML = `<span><i style="background:var(--accent)"></i>${esc(B.county.name)}</span><span><i style="background:var(--muted)"></i>Finland</span>` +
+    `<span style="flex-basis:100%">Relative survival compares the patients with people of the same age in the region, so it leaves out deaths from other causes.</span>` +
     rough + `<span style="flex-basis:100%">${nordicLine(B.nordic)}</span>`;
 }
 
@@ -620,31 +1405,164 @@ function nordicLine(b) {
   return `National five-year survival, NORDCAN ${esc(b.period)}: ${parts.join(", ")}. NORDCAN uses another method than Sotkanet, so these values are not on the chart scale.${cite("nordcan")}`;
 }
 
+// The first action as a plan: a local step a county can start itself, the roadmap step, and the check that it worked.
 const LEVEL = { account: "Account level: the county or its hospital", national: "National level", both: "National decision, applied in each county" };
 function drawAction() {
   const [first, ...rest] = B.recommendations;
   const page = r => r.page ? `page ${r.page}` : "page to confirm";
-  if (!first) { $("#action").innerHTML = "<p>No recommendation.</p>"; $("#more").innerHTML = ""; return; }
+    if (!first) { $("#action").innerHTML = "<p>No recommendation.</p>"; $("#more").innerHTML = "<li>No other measure.</li>"; return; }
+  const roadmap = first.source === "roadmap";
+  const origin = roadmap ? `Roadmap measure ${esc(first.measure)}, ${page(first)}` : esc(first.proposal || "Team proposal");
+  const next = roadmap ? "What the national roadmap asks for" : "Protocol before any change of care";
   $("#action").innerHTML = `
-    <div class="meta"><span class="line">${esc(first.measure)}</span>&nbsp; Roadmap measure, ${page(first)}${cite("roadmap")}. <span class="level">${LEVEL[first.level]}.</span></div>
-    <div class="what">${esc(first.action)}</div>
-    ${first.detail ? `<div class="detail">${esc(first.detail)}</div>` : ""}
+    <h2 class="what">${esc(first.action)}</h2>
+    <div class="meta"><span class="line">${roadmap ? esc(first.measure) : "Proposal"}</span>&nbsp; ${origin}${cite(first.source)}. <span class="level">${LEVEL[first.level]}.</span>${first.detail ? ` ${esc(first.detail)}` : ""}</div>
     ${first.note ? `<div class="detail">${esc(first.note)}${first.note_sources.map(cite).join("")} This note is our reading of the studies, not roadmap text.</div>` : ""}
-    ${first.nordic ? `<div class="meta" style="margin-top:8px">Nordic model: ${esc(first.nordic)}</div>` : ""}
-    ${first.priority ? `<div class="meta" style="margin-top:8px">Counties with significantly more ${esc(B.cancer.label.toLowerCase())} deaths than their age structure predicts: ${first.priority.map(p => `${esc(p.county)} (SMR ${p.smr})`).join(", ")}${cite(first.priority_source)}</div>` : ""}
-    <dl>
-      <dt>Start locally</dt><dd>${esc(first.local.text)}${cite("local_step")}${first.local.evidence ? ` ${esc(first.local.evidence)}${cite(first.local.evidence_source)}` : ""} This step is our proposal for one health centre or one county. It is not roadmap text.</dd>
-      <dt>Roadmap step</dt><dd>${esc(first.first_step)}${cite("roadmap")}</dd>
-      <dt>Success is</dt><dd>${esc(first.success)}${cite(first.success_source)}</dd>
+    <div class="actgrid">
+    <ol class="plan">
+      <li><div class="when">Start locally</div><div class="t">One health centre or one county can start this next month</div>
+        ${esc(first.local.text)}${cite("local_step")}
+        ${first.local.evidence ? `<span class="fine">${esc(first.local.evidence)}${cite(first.local.evidence_source)}</span>` : ""}
+        <span class="fine">This step is our proposal. It is not roadmap text, and no county reviewed it.</span></li>
+      <li><div class="when">${roadmap ? "Roadmap step" : "Protocol"}</div><div class="t">${next}</div>${esc(first.first_step)}${cite(first.source)}</li>
+      <li><div class="when">Check the result</div><div class="t">Success is</div>${esc(first.success)}${cite(first.success_source)}</li>
+    </ol>
+    <aside class="actside"><dl>
       <dt>Who acts</dt><dd>${esc(first.actor)}</dd>
       <dt>Why here</dt><dd>${esc(first.why)}${first.evidence.map(id => cite(B.facts[id].source)).filter((v, i, a) => a.indexOf(v) === i).join("")}</dd>
-    </dl>`;
-  $("#morewrap").style.display = rest.length ? "" : "none";
-  $("#more").innerHTML = rest.map(r => `<li><span class="line">${esc(r.measure)}</span><div>${esc(r.action)}${cite("roadmap")}<small>${LEVEL[r.level]}. Roadmap ${page(r)}. Who acts: ${esc(r.actor)}. Success is: ${esc(r.success[0].toLowerCase() + r.success.slice(1))}${cite(r.success_source)} Start locally: ${esc(r.local.text)}${cite("local_step")}</small></div></li>`).join("");
+      ${first.here?.length ? `<dt>In ${esc(B.county.name)}</dt><dd>${first.here.map(h => `${esc(h.text)}${cite(h.source)}`).join(" ")}</dd>` : ""}
+      ${first.nordic ? `<dt>Nordic model</dt><dd>${esc(first.nordic)}</dd>` : ""}
+      ${first.priority ? `<dt>Counties first</dt><dd>Significantly more ${esc(B.cancer.label.toLowerCase())} deaths than the age structure predicts: ${first.priority.map(p => `${esc(p.county)} (SMR ${p.smr})`).join(", ")}${cite(first.priority_source)}</dd>` : ""}
+    </dl>
+    <div class="cta">
+      <button type="button" class="btn primary js-print">Print the brief</button>
+      <button type="button" class="btn" id="copybrief">Copy brief as text</button>
+      <button type="button" class="btn" data-go="gaps" data-sub="County pilot">See what a county pilot measures</button>
+    </div></aside>
+    </div>
+    ${loopHtml(first)}`;
+  $("#action").querySelectorAll(".js-print").forEach(b => b.onclick = () => print());
+  $("#action").querySelectorAll("[data-go]").forEach(b => b.onclick = () => showTab(b.dataset.go, b.dataset.sub));
+  $("#copybrief").onclick = copyBrief;
+  $("#more").innerHTML = !rest.length ? "<li>No other measure.</li>" : rest.map(r => `<li><span class="line">${esc(r.measure)}</span><div>${esc(r.action)}${cite(r.source)}<small><b>Start locally:</b> ${esc(r.local.text)}${cite("local_step")}</small><small>${LEVEL[r.level]}. ${r.source === "roadmap" ? "Roadmap " + page(r) + ". " : "Team proposal. "}Who acts: ${esc(r.actor)}. Success is: ${esc(r.success[0].toLowerCase() + r.success.slice(1))}${cite(r.success_source)}</small>${r.loop ? `<small><b>Before and after:</b> ${esc(r.loop.measure)}</small><small><b>Go or no go:</b> ${esc(r.loop.go)}</small>` : ""}</div></li>`).join("");
+}
+
+// The date of the day-90 decision, counted from today. The county sets the real date when it starts.
+const reviewDate = () => new Date(Date.now() + 90 * 864e5).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+
+// The outcome loop of a measure: owner, what happens by day 30, 60 and 90, the number before and after, and go or no go.
+function loopHtml(r, cites = true) {
+  const l = r.loop;
+  if (!l) return "";
+  const days = l.days.map((d, i) => `<li><div class="when">By day ${30 * (i + 1)}</div>${esc(d)}</li>`).join("");
+  return `<div class="loop"><h3 class="sub">From action to result: who, when, and how the county knows it worked</h3>
+    <ol class="days">${days}</ol>
+    <dl><dt>Owner</dt><dd>${esc(r.actor)}</dd><dt>Before and after</dt><dd>${esc(l.measure)}</dd>
+    <dt>Go or no go</dt><dd>${esc(l.go)}</dd><dt>Next review</dt><dd>${reviewDate()}, 90 days from today. The county sets the real date when it starts.</dd></dl>
+    <p class="fine">The loop is our proposal${cites ? cite("local_step") : ""}. It is not roadmap text, and no county reviewed it.</p></div>`;
+}
+
+// The decision in one screen: who is behind, how sure the public data are, and that the next step is to learn, not to treat.
+// Each check passes, fails or cannot be made. A failed check is shown as plainly as a passed one.
+function signalChecks() {
+  const c = B.chart, p = B.pathway, out = [];
+  const deaths = { agree: ["yes", "Deaths agree: more deaths than the age structure predicts"],
+    not_confirmed: ["no", "Deaths do not confirm the gap"], too_few: ["na", "Too few deaths to check"] }[p.deaths];
+  if (c && c.kind === "survival" && c.interval) {
+    const iv = c.interval, below = c.gap < 0;
+    const ivWords = iv.excludes_zero ? (below ? "below zero" : "above zero") : "includes zero";
+    out.push([below && iv.excludes_zero ? "yes" : "no", `Rough 95% interval ${ivWords}: ${minus(signed(iv.low))} to ${minus(signed(iv.high))} points`, "survival_interval"]);
+    out.push([below && iv.strict_excludes_zero ? "yes" : "no", `${below && iv.strict_excludes_zero ? "Holds" : "Does not hold"} the stricter limit for ${iv.comparisons} counties compared at once`, "survival_interval"]);
+  } else if (B.goal3) {
+    const r = B.goal3.rows.find(x => x.cause === state.cancer);
+    if (r) out.push([r.confidence === "high" && r.direction === "worse" ? "yes" : "no", `Deaths against expected: SMR ${r.smr}, 95% interval ${r.low} to ${r.high}`, B.goal3.source]);
+  }
+  if (deaths) out.push([...deaths, "statfin_mortality"]);
+  const located = ["detection", "watch"].includes(p.step);
+  if (p.step === "none") out.push(["na", "No gap to place on the pathway", "pathway_rule"]);
+  else out.push([located ? "yes" : "no", located ? "Points to one step: detection, as a question" : "The public data cannot name the slow step", "pathway_rule"]);
+  return out;
+}
+const MARK = { yes: "✓", no: "✗", na: "–" };
+function drawDecide() {
+  const c = B.chart, name = esc(B.county.name), label = esc(B.cancer.label.toLowerCase()), first = B.recommendations[0];
+  let line;
+  if (c && c.kind === "survival" && c.interval) {
+    const g = c.gap, who = `About ${c.interval.cases_per_year} people a year get ${label} in ${name}, an estimate from the age structure.${cite("nordcan")}`;
+    const pts = `${Math.abs(g)} ${Math.abs(g) === 1 ? "point" : "points"}`;
+    line = g < 0 && c.interval.excludes_zero ? `${who} Their five-year survival is ${pts} behind Finland.${cite(c.source)}`
+      : g < 0 ? `${who} Their five-year survival is ${pts} below Finland, within the uncertainty of the data.${cite(c.source)}`
+      : `${who} Their five-year survival is not behind Finland.${cite(c.source)}`;
+  } else {
+    const r = B.goal3?.rows.find(x => x.cause === state.cancer);
+    line = r ? `About ${Math.round(r.deaths_per_year)} people a year die of ${label} in ${name}, ${r.confidence === "high" ? (r.direction === "worse" ? "more than" : "fewer than") : "within the range"} the age structure predicts (SMR ${r.smr}).${cite(B.goal3.source)}` : `${esc(B.cancer.label)} in ${name}.`;
+  }
+  const checks = signalChecks().map(([k, t, src]) => `<li class="c-${k}"><span class="m" aria-hidden="true">${MARK[k]}</span><span class="sr">${k === "yes" ? "Yes" : k === "no" ? "No" : "Not possible"}:</span> ${esc(t)}${src ? cite(src) : ""}</li>`).join("");
+  $("#decide").innerHTML = `<div class="eyebrow">The decision</div>
+    <p class="headline">${line}</p>
+    <p class="so">The data show where to look, not what to fix. This is what ${name} can learn in the next 90 days, and the rule that decides what follows.</p>
+    <ul class="checks" aria-label="How sure the public data are">${checks}</ul>
+    <p class="fine">A question to investigate, not a cause.${first ? ` Owner: ${esc(first.actor)}. Next review: ${reviewDate()}.` : ""}</p>`;
+}
+
+// The second printed page: what a clinical lead takes into the meeting.
+function drawPacket() {
+  const first = B.recommendations[0], p = EV.pilot;
+  if (!first) { $("#packet").innerHTML = ""; return; }
+  const checks = signalChecks().map(([k, t]) => `<li>${MARK[k]} ${esc(t)}</li>`).join("");
+  const limits = B.pathway.caveats.map(c => `<li>${esc(c)}</li>`).join("");
+  const missing = (B.missing || []).map(m => `<li><b>${esc(m.what)}.</b>${m.measure ? ` Roadmap measure ${esc(m.measure)}.` : ""}</li>`).join("");
+  // The pilot protocol belongs to the measurement actions. The small-numbers rule uses this county's own case estimate.
+  const measuring = ["pathway_audit", "local_baseline"].includes(first.measure), cases = B.chart?.interval?.cases_per_year;
+  const small = (cases ? `About ${cases} new ${esc(B.cancer.label.toLowerCase())} cases a year in ${esc(B.county.name)}, an estimate, spread over all its health centres. ` : "") + esc(p.small_numbers_rule);
+  const protocol = measuring ? `<h3>Pilot protocol</h3><dl><dt>Privacy</dt><dd>${esc(p.privacy)}</dd><dt>Small numbers</dt><dd>${small}</dd>
+      <dt>Governance</dt><dd>${esc(p.governance)}</dd><dt>Decision rule</dt><dd>${esc(p.decision_rule)}</dd></dl>` : "";
+  $("#packet").innerHTML = `<h2>Action packet: ${esc(B.cancer.label)} in ${esc(B.county.name)}</h2>
+    <p>For the meeting that decides whether to start. First action: ${esc(first.action)}</p>
+    <div class="cols"><section><h3>Signal and how sure it is</h3><ul class="plain">${checks}</ul>
+      <h3>Limits</h3><ul>${limits}</ul>
+      <h3>Data that is missing</h3><ul>${missing}</ul></section>
+    <section>${loopHtml(first, false)}${protocol}</section></div>
+    <p class="fine">The numbers and their sources are on page 1. The loop${measuring ? " and the protocol are proposals" : " is a proposal"} of the Cancer Care Atlas team. No county, clinician or data protection officer reviewed ${measuring ? "them" : "it"}.</p>`;
+}
+
+// A reminder campaign inside a national screening programme. The backend sets every rule and every count.
+function drawCampaign() {
+  const c = B.campaign, name = esc(B.county.name), n = v => v.toLocaleString("en");
+  if (!c) { $("#campaignbody").innerHTML = "<p>The server sent no campaign data.</p>"; return; }
+  if (!c.programme) {
+    $("#campaignbody").innerHTML = `<div class="verdictbar"><h2>No campaign for ${esc(B.cancer.label.toLowerCase())}</h2><span class="pill near">${esc(c.status)}</span></div><p class="lead">${esc(c.text)}${cite(c.source)}</p>`;
+    return;
+  }
+  const p = c.programme, go = c.status === "campaign", z = c.size;
+  const tiles = [
+    [`${name}, ${c.year}`, c.attendance + "%", `Attendance in the public programme${cite(c.attendance_source)}`, go ? "below" : "above"],
+    ["Target", c.target + "%", `In every county${cite(c.target_source)}. Finland: ${c.national}%`, ""],
+    ...(z ? [["No test in the programme", "about " + n(z.not_attended), `Of about ${n(z.invited)} invited${cite(c.source)}`, ""],
+             ["To reach the target", go ? "about " + n(z.needed) : "0", go ? "More tests in the programme" : "The county is at the target", go ? "below" : ""]] : []),
+  ];
+  const rules = c.person_rules.map((r, i) => `<tr><td class="yes">Rule ${i + 1}</td><td>${esc(r.rule)}</td><td>${esc(r.field)}</td><td>${esc(r.register)}</td></tr>`).join("");
+  const steps = c.steps.map(s => `<li><div class="t">${esc(s.title)}</div>${esc(s.text)}</li>`).join("");
+  $("#campaignbody").innerHTML = `
+    <div class="verdictbar"><h2>${go ? "Run a reminder campaign" : "No campaign needed now"}: ${esc(p.name)} in ${name}</h2>
+      <span class="pill ${go ? "worse" : "better"}">${go ? `below the ${c.target}% target` : `at or above the ${c.target}% target`}</span></div>
+    <div class="kpis">${tilesHtml(tiles)}</div>
+    <p class="caveat wide limit"><b>Read the counts with care.</b> ${esc(c.outside.text)}${cite(c.outside.source)}</p>
+    <div class="split2">
+      <div><h3 class="sub">Who is in the campaign: three rules, all must be true${cite(c.source)}</h3>
+        <div class="tablewrap"><table class="g3"><thead><tr><th></th><th style="width:50%">Rule</th><th>Data field</th><th>Kept in</th></tr></thead><tbody>${rules}</tbody></table></div>
+        <p class="caveat"><b>The programme invites:</b> ${esc(p.group)} ${esc(p.interval)}. ${esc(p.test)}${cite(c.programme_source)}</p>
+        <p class="caveat"><b>Not used:</b> ${c.not_used.map(esc).join(", ")}.</p>
+        <p class="caveat"><b>Order:</b> ${esc(c.order.text)} Data field: ${esc(c.order.field[0].toLowerCase() + c.order.field.slice(1))}. ${esc(c.order.evidence)}${cite(c.order.evidence_source)}</p></div>
+      <div><h3 class="sub">What the county does</h3>
+        <ol class="plan">${steps}</ol>
+        <p class="caveat">${esc(c.evidence.text)}${cite(c.evidence.source)}</p>
+        <p class="caveat">${esc(c.reading)} ${esc(c.county_rule.text)}</p></div>
+    </div>`;
 }
 
 function drawSmrChart() {
-  const c = B.chart, W = 420, H = 220, L = 34, R = 18, T = 10, Bm = 26;
+  const c = B.chart, W = 420, H = 220, L = 38, R = 18, T = 10, Bm = 26;
   const years = Object.keys(c.county).map(Number).sort();
   const vals = [...Object.values(c.county), 100];
   const lo = Math.floor(Math.min(...vals) / 10) * 10 - 5, hi = Math.ceil(Math.max(...vals) / 10) * 10 + 5;
@@ -652,46 +1570,36 @@ function drawSmrChart() {
   const yv = v => T + (hi - v) / (hi - lo) * (H - T - Bm);
   const ticks = []; for (let v = Math.ceil(lo / 10) * 10; v <= hi; v += 10) ticks.push(v);
   const pts = years.map(y => [x(y), yv(c.county[y]), c.county[y], y]);
-  $("#chartsvg").innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Deaths against expected over time">` +
+  const accessible = years.map(y => `${y}: SMR ${c.county[y]}`).join(". ");
+  $("#chartsvg").innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Deaths against expected over time. ${esc(accessible)}">` +
     ticks.map(v => `<line x1="${L}" x2="${W - R}" y1="${yv(v)}" y2="${yv(v)}" stroke="var(--line)"/><text x="${L - 6}" y="${yv(v) + 4}" text-anchor="end">${v}</text>`).join("") +
     years.map(y => `<text x="${x(y)}" y="${H - 8}" text-anchor="middle">${y}</text>`).join("") +
     `<line x1="${L}" x2="${W - R}" y1="${yv(100)}" y2="${yv(100)}" stroke="var(--muted)" stroke-width="2.5"/>` +
     `<path d="M${pts.map(p => p[0].toFixed(1) + "," + p[1].toFixed(1)).join("L")}" fill="none" stroke="var(--accent)" stroke-width="2.5"/>` +
-    pts.map(p => `<circle cx="${p[0]}" cy="${p[1]}" r="3" fill="var(--accent)"><title>${p[3]}: SMR ${p[2]}</title></circle>`).join("") + "</svg>";
+    pts.map(p => `<circle cx="${p[0]}" cy="${p[1]}" r="3.5" fill="var(--accent)"><title>${p[3]}: SMR ${p[2]}</title></circle>`).join("") + "</svg>";
   $("#charttitle").innerHTML = `${esc(B.cancer.label)} deaths against expected (SMR)${cite(c.source)}`;
   $("#chartlegend").innerHTML = `<span><i style="background:var(--accent)"></i>${esc(B.county.name)}</span><span><i style="background:var(--muted)"></i>100 = as many as the age structure predicts</span>` +
     `<span style="flex-basis:100%">No county survival data exists for this cancer. Single years are noisy; the Goal 3 panel pools three years. ${nordicLine(B.nordic)}</span>`;
 }
 
-// The backend computes the simulation for every slider position; the page only picks one.
-function drawSim() {
-  const s = B?.simulation; if (!s) return;
-  const nordic = s.mode === "nordic";
-  $("#sim h2").textContent = nordic ? "If Finland reached the Nordic level" : "If the county reached the national level";
-  if (!s.steps) { $("#simbig").textContent = "–"; $("#simtext").textContent = "Not enough data."; $("#simnote").textContent = ""; return; }
-  const pct = +$("#slider").value, extra = s.steps.survivors[pct], reached = s.steps.reached[pct];
-  const label = esc(B.cancer.label.toLowerCase());
-  if (s.goal <= s.start) {
-    $("#simbig").textContent = "0";
-    $("#simtext").innerHTML = `${esc(B.county.name)} is already at or above the national survival (${s.start}% against ${s.goal}% in ${s.period})${cite(s.source)}.`;
-  } else {
-    $("#simbig").textContent = `+${extra}`;
-    $("#simtext").innerHTML = nordic
-      ? `more of ${esc(B.county.name)}'s yearly ${label} patients alive after five years, if national survival closes ${pct}% of the gap to the Nordic level (${s.start}% to ${reached}%)${cite(s.source)}.${s.target ? ` Goal 3 asks for +${s.target} points${cite("strategy")}.` : ""}`
-      : `more people alive five years after diagnosis, for each year's patients, if the county closes ${pct}% of its gap (${s.start}% to ${reached}%)${cite(s.source)}.`;
-  }
-  $("#simnote").innerHTML = `<b>An illustration of the size of the gap, not a forecast.</b> ${nordic ? `Survival describes patients diagnosed in ${esc(s.period)}.` : "Survival describes patients diagnosed up to ten years ago."} About ${s.cases.value} new cases per year, an estimate: ${esc(s.cases.method)}${cite(s.cases.source)}. It ignores the age structure of the county.`;
-  drawSources();
+function drawInterpretation() {
+  const s = B?.simulation;
+  if (!s) { $("#simbody").textContent = "No outcome comparison is available."; return; }
+  const period = s.mode === "nordic" ? `patients diagnosed in ${s.period}` : "patients diagnosed across a historical ten-year window";
+  $("#simbody").innerHTML = `<p class="lead">The observed survival difference is a historical outcome signal, not an estimate of lives saved by the recommended action.</p>
+    <p>It cannot show whether a change in screening, referral, diagnostics, systemic therapy or radiotherapy would close the difference. It also cannot assign the gap to a clinician, service or treatment.</p>
+    <p class="caveat">This view concerns ${esc(period)}. County case volume is an estimate: ${esc(s.cases.method)}${cite(s.cases.source)}${s.cases.share_source ? cite(s.cases.share_source) : ""}. ${esc(s.cases.limit || "")}</p>`;
 }
 
 function drawMissing() {
-  $("#missing").innerHTML = B.missing.map(m => `<li><span class="line ${m.measure ? "" : "none"}">${m.measure ? esc(m.measure) : "–"}</span><div>${esc(m.what)}${cite(m.source)}<small>${esc(m.why)}${m.measure ? ` Roadmap measure ${esc(m.measure)} addresses this.` : ""}</small></div></li>`).join("");
+  $("#missinglist").innerHTML = B.missing.map(m => `<li><span class="line ${m.measure ? "" : "none"}">${m.measure ? esc(m.measure) : "–"}</span><div>${esc(m.what)}${cite(m.source)}<small>${esc(m.why)}${m.measure ? ` Roadmap measure ${esc(m.measure)} addresses this.` : ""}</small></div></li>`).join("");
 }
 
 document.addEventListener("click", e => {
   const a = e.target.closest("sup.cite a"); if (!a) return;
   document.querySelectorAll(".sources li").forEach(li => li.classList.remove("hl"));
-  const li = document.getElementById("src-" + a.dataset.n); if (li) li.classList.add("hl");
+  e.preventDefault(); showTab("sources");
+  const li = document.getElementById("src-" + a.dataset.n); if (li) { li.classList.add("hl"); li.scrollIntoView({ block: "center" }); }
 });
 init();
 </script>

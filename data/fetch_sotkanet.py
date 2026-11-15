@@ -1,6 +1,7 @@
 """Download the open Sotkanet indicators and the county map. No API key needed.
 
-    uv run python data/fetch_sotkanet.py
+    uv run python data/fetch_sotkanet.py            # every indicator and the map
+    uv run python data/fetch_sotkanet.py 6411 3336  # only these indicators
 
 Writes data/raw/regions.json, data/raw/sotkanet_<id>.json and web/counties.geojson.
 """
@@ -35,7 +36,10 @@ def main() -> None:
         keep = [r for r in regions if r["category"] in ("HYVINVOINTIALUE", "MAA")]
         (RAW / "regions.json").write_text(json.dumps(keep, ensure_ascii=False, indent=1))
         ids = {r["id"] for r in keep}
+        only = {int(a) for a in sys.argv[1:]}  # optional: refresh only these indicator IDs
         for ind, (_, start, end) in SOTKANET.items():
+            if only and ind not in only:
+                continue
             years = "&".join(f"years={y}" for y in range(start, end + 1))
             rows = http.get(f"{API}/json?indicator={ind}&{years}&genders=total").json()
             rows = [r for r in rows if r["region"] in ids and r.get("value") is not None]
@@ -49,6 +53,8 @@ def main() -> None:
             }
             (RAW / f"sotkanet_{ind}.json").write_text(json.dumps(out, ensure_ascii=False))
             print(ind, len(rows), "rows")
+        if only:
+            return
         geo = http.get(GEO).json()
         (ROOT / "web" / "counties.geojson").write_text(json.dumps(geo))
         print("map", len(geo["features"]), "counties")

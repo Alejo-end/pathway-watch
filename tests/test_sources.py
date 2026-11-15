@@ -93,12 +93,50 @@ def test_a_model_answer_that_stops_early_or_is_not_json_is_not_used(monkeypatch,
 
 
 def test_a_model_draft_that_fails_the_check_falls_back_to_the_template(monkeypatch):
-    monkeypatch.setattr(analyst, "llm_sentences", lambda facts: [{"text": "Survival fell by 99 points.", "fact_ids": ["pathway"]}])
+    monkeypatch.setattr(analyst, "llm_draft", lambda facts: ([{"text": "Survival fell by 99 points.", "fact_ids": ["pathway"]}], "verda"))
     pathway = A.locate(data, "bowel", "09")
     fact_list = F.survival_and_screening_facts(data, "bowel", "09") + F.pathway_and_action_facts(pathway, [])
     out = analyst.summarize(data, "bowel", "09", pathway, [], fact_list)
     assert out["writer"] == "template" and out["sentences"]
     assert out["removed"][0]["text"] == "Survival fell by 99 points."
+
+
+def test_open_pathway_summary_hides_screening_from_the_writer_but_not_the_app():
+    pathway = A.locate(data, "bowel", "06")
+    facts = F.survival_and_screening_facts(data, "bowel", "06") + F.pathway_and_action_facts(pathway, [])
+    passed = analyst._summary_model_facts("bowel", pathway, facts)
+    screen_id = str(CANCERS["bowel"]["screening"])
+    assert any(f.id.startswith(screen_id + ".") for f in facts)
+    assert not any(f.id.startswith(screen_id + ".") for f in passed)
+
+
+def test_verda_writer_uses_only_the_openai_compatible_chat_endpoint(monkeypatch):
+    """The provider is optional, but its request shape must stay compatible and bounded."""
+    seen = {}
+
+    class Response:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"choices": [{"message": {"content": GOOD_ANSWER}}]}
+
+    def fake_post(url, **kwargs):
+        seen["url"] = url
+        seen.update(kwargs)
+        return Response()
+
+    monkeypatch.setenv("VERDA_INFERENCE_API_KEY", "test-key")
+    monkeypatch.setenv("VERDA_INFERENCE_BASE_URL", "https://example.test/v1")
+    monkeypatch.setattr(analyst.httpx, "post", fake_post)
+    assert analyst.verda_sentences(FACTS) == json.loads(GOOD_ANSWER)["sentences"]
+    assert seen["url"] == "https://example.test/v1/chat/completions"
+    assert seen["headers"] == {"Authorization": "Bearer test-key"}
+    assert seen["json"]["temperature"] == 0
+    assert seen["json"]["reasoning_effort"] == "none"
+    assert seen["json"]["max_tokens"] == 1024
+    assert seen["json"]["response_format"] == {"type": "json_object"}
+    assert seen["json"]["messages"][1]["content"] == json.dumps(analyst._model_payload(FACTS), ensure_ascii=False)
 
 
 # ---------- every ID resolves ----------
@@ -163,24 +201,28 @@ def test_satakunta_bowel_survival_is_below_finland_in_every_published_year():
     assert g.gap == raw_value(3627, "06", 2024) - data.series(3627, NATIONAL)[2024]
     b = _briefing("bowel", "06")
     assert (b["pathway"]["step"], b["pathway"]["evidence"]) == ("any", "interval_excludes_zero")
-    assert b["recommendations"][0]["measure"] == "2.5.2"
+    first, *rest = b["recommendations"]
+    assert (first["measure"], first["source"], first["page"]) == ("pathway_audit", "local_step", None)
+    assert [r["measure"] for r in rest][:3] == ["2.5.2", "1.3.2", "3.1.2"]
+    assert all(r["why"].startswith("A candidate if the audit finds") for r in rest[:3])
+    assert "not a roadmap measure" in b["summary"]["sentences"][-1]["text"]
     assert b["facts"]["pathway"]["text"].startswith("Question to investigate:")
     iv = A.survival_interval(data, "bowel", "06")  # the handbook graphic shows these numbers
-    assert (iv.patients, iv.se, iv.low, iv.high) == (1530, 1.3, -6.5, -1.5)
+    assert (iv.patients, iv.se, iv.low, iv.high) == (1870, 1.2, -6.3, -1.7)
 
 
 def test_satakunta_bowel_interval_and_the_sentence_and_fact_that_cite_it():
     iv = A.survival_interval(data, "bowel", "06")
-    assert (iv.cases_per_year, iv.patients, iv.se, iv.low, iv.high, iv.excludes_zero) == (153, 1530, 1.3, -6.5, -1.5, True)
+    assert (iv.cases_per_year, iv.patients, iv.se, iv.low, iv.high, iv.excludes_zero) == (187, 1870, 1.2, -6.3, -1.7, True)
     b = _briefing("bowel", "06")
     fact = b["facts"]["3627.interval"]
-    assert "6.5 to 1.5 points below the national value" in fact["text"]
+    assert "6.3 to 1.7 points below the national value" in fact["text"]
     assert "our estimate" in fact["text"] and "not a published interval" in fact["text"]
     assert fact["source"] == "survival_interval"
     first = b["summary"]["sentences"][0]
-    assert "rough 95% interval for the gap is 6.5 to 1.5 points below" in first["text"]
+    assert "rough 95% interval for the gap is 6.3 to 1.7 points below" in first["text"]
     assert "3627.interval" in first["fact_ids"]
-    assert b["chart"]["interval"]["low"] == -6.5 and b["chart"]["n_years"] == 6
+    assert b["chart"]["interval"]["low"] == -6.3 and b["chart"]["n_years"] == 6
 
 
 def test_no_bowel_sentence_or_reason_explains_survival_with_screening():
@@ -208,7 +250,7 @@ def test_map_layer_gives_the_latest_year_gap_and_the_persistence():
     d = map_layer(3627)["counties"]["06"]
     assert (d["latest"], d["year"], d["gap"], d["direction"]) == (64, 2024, -4.0, "below")
     assert (d["persistence"], d["years_same_side"], d["n_years"]) == ("persistent", 6, 6)
-    assert (d["interval"]["low"], d["interval"]["high"], d["interval"]["excludes_zero"]) == (-6.5, -1.5, True)
+    assert (d["interval"]["low"], d["interval"]["high"], d["interval"]["excludes_zero"]) == (-6.3, -1.7, True)
     assert "confidence" not in d
     assert "interval" not in map_layer(6103)["counties"]["06"]  # attendance has no patient-count interval
 
@@ -288,8 +330,21 @@ def test_every_measure_says_who_acts_how_to_start_and_what_success_is():
     sources = data.sources()
     for mid, m in MEASURES.items():
         assert m["level"] in ("account", "national", "both"), mid
-        assert m["first_step"] and m["success"] and m["page"], mid
+        assert m["first_step"] and m["success"], mid
+        if m.get("source", "roadmap") == "roadmap":
+            assert m["page"], mid
+        else:
+            assert m["page"] is None and m["source"] in sources, mid
         assert m["success_source"] in sources, mid
+
+
+def test_a_no_signal_starts_an_owned_baseline_not_a_national_registry_placeholder():
+    b = _briefing("breast", "05")
+    assert b["pathway"]["step"] == "none"
+    first = b["recommendations"][0]
+    assert first["measure"] == "local_baseline"
+    assert first["source"] == "local_step"
+    assert "95% completeness" in first["success"]
 
 
 def test_low_screening_first_asks_who_does_not_attend_and_does_not_presume_a_cause():
@@ -342,3 +397,87 @@ def test_a_survival_signal_needs_an_interval_below_zero_and_an_attendance_signal
     assert "survival" not in [s["kind"] for s in signals(data, mort, "breast", "90")]
     # Satakunta, cervical cancer: 4 points below, but about 70 patients, so the interval includes zero. No signal.
     assert "survival" not in [s["kind"] for s in signals(data, mort, "cervical", "06")]
+
+
+def test_county_cases_follow_the_age_structure_and_add_up_to_the_national_count():
+    """An old county gets more cases than its share of the population, and a young county fewer."""
+    for cancer in CANCERS:
+        finland = nordcan.combined(nc, cancer, "finland")["cases"]
+        cases = {c: A.county_cases(data, cancer, c) for c in data.counties}
+        assert all(v["basis"] == "age structure" and v["status"] == "estimate" for v in cases.values())
+        # Åland is not a county in the app, so the counties hold a little less than the whole country.
+        assert 0.98 * finland <= sum(v["value"] for v in cases.values()) <= finland + len(cases)
+    by_population = lambda c: 4085 * data.population[c] / data.population[NATIONAL]
+    assert A.county_cases(data, "bowel", "06")["value"] > by_population("06")  # Satakunta: many old people
+    assert A.county_cases(data, "bowel", "90")["value"] < by_population("90")  # Helsinki: a young population
+    for c in data.counties:
+        assert mort.expected_share("bowel", c) == pytest.approx(
+            sum(mort._expected("bowel", c, y) for y in mort.years) / sum(mort._observed("bowel", NATIONAL, y) for y in mort.years))
+    assert mort.expected_share("no such cause", "06") is None
+
+
+def test_the_strict_interval_is_wider_and_only_some_survival_gaps_hold_it():
+    """With 22 counties, about one 95% interval excludes zero by chance. The strict limit accounts for that."""
+    assert A.strict_z(1) == pytest.approx(1.96, abs=0.001) and 3.0 < A.strict_z(len(data.counties)) < 3.1
+    found, strict = [], []
+    for cancer, spec in CANCERS.items():
+        if not spec["survival"]:
+            continue
+        for c in data.counties:
+            iv = A.survival_interval(data, cancer, c)
+            if iv is None:
+                continue
+            assert iv.comparisons == len(data.counties)
+            assert iv.strict_low <= iv.low and iv.strict_high >= iv.high
+            assert not iv.strict_excludes_zero or iv.excludes_zero  # the strict limit never finds more
+            if iv.excludes_zero and iv.high < 0:
+                found.append((cancer, c))
+                strict += [(cancer, c)] * iv.strict_excludes_zero
+    assert ("bowel", "06") in strict  # the demo case holds the strict limit
+    assert 0 < len(strict) < len(found)
+    p = A.locate(data, "bowel", "06")
+    assert any("still excludes zero" in c for c in p.caveats)
+    weak = next(k for k in found if k not in strict)
+    assert any("can be one of the chance signals" in c for c in A.locate(data, *weak).caveats)
+
+
+def test_the_first_action_carries_the_numbers_of_its_county():
+    b = _briefing("bowel", "06")
+    here = b["recommendations"][0]["here"]
+    size = b["campaign"]["size"]
+    text = " ".join(h["text"] for h in here)
+    assert f"About {b['simulation']['cases']['value']} new bowel cancer cases" in text
+    assert f"{size['not_attended']:,}" in text and f"{size['needed']:,}" in text
+    assert all(h["source"] in data.sources() for h in here)
+    other = _briefing("bowel", "90")["recommendations"][0]["here"]
+    assert [h["text"] for h in other] != [h["text"] for h in here]  # the same cancer, another county, other numbers
+    assert _briefing("lung", "06")["recommendations"][0]["here"]  # deaths, for a cancer without a programme
+
+
+def test_meta_reports_a_server_that_is_older_than_its_files(monkeypatch):
+    from backend import app as app_module
+    assert app_module.meta()["stale"] is False
+    monkeypatch.setattr(app_module, "LOADED_AT", app_module.LOADED_AT - 60)
+    assert app_module.meta()["stale"] is True
+
+
+def test_satakunta_registry_stage_source_equals_the_raw_file_and_reaches_the_notes():
+    raw = json.loads((RAW / "fcr_clinical_notifications.json").read_text())["sites"]["bowel"]
+    b = _briefing("bowel", "06")
+    fact = b["facts"]["registry.stage_source"]
+    assert fact["source"] == "fcr_clinical" and fact["value"] == raw["06"][-1]
+    assert f"{min(raw['06'])}% to {max(raw['06'])}%" in fact["text"]
+    assert f"{min(raw['358'])}% to {max(raw['358'])}%" in fact["text"]
+    assert any("clinical notification" in c for c in b["pathway"]["caveats"])
+    assert "registry.stage_source" not in _briefing("cervical", "06")["facts"]  # the application does not cover it
+
+
+def test_every_action_closes_the_loop_with_owner_days_measure_and_a_go_rule():
+    from backend.timeline import PILOT
+    for cancer, county, b in all_briefings():
+        for r in b["recommendations"]:
+            loop = r["loop"]
+            assert r["actor"] and len(loop["days"]) == 3 and all(loop["days"]), (cancer, county, r["measure"])
+            assert loop["measure"].startswith("Before") and "no go" in loop["go"].lower(), r["measure"]
+    audit = next(r for r in _briefing("bowel", "06")["recommendations"] if r["measure"] == "pathway_audit")
+    assert audit["loop"]["go"] == PILOT["go_no_go"]

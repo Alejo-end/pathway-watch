@@ -1,6 +1,6 @@
 # Pathway Watch: demo plan
 
-This file is the build brief for Pathway Watch. Team Kindergarten Engineering builds it at Junction 2026 for the AstraZeneca challenge "Equal Care Across Finland". Any person or coding agent who joins the work starts here. For a short explanation with maps, read `pathway-watch/HANDBOOK.md` first.
+The product is now named Cancer Care Atlas. This file keeps its first name, Pathway Watch. This file is the build brief for Pathway Watch. Team Kindergarten Engineering builds it at Junction 2026 for the AstraZeneca challenge "Equal Care Across Finland". Any person or coding agent who joins the work starts here. For a short explanation with maps, read `pathway-watch/HANDBOOK.md` first.
 
 ## Goal
 
@@ -42,7 +42,7 @@ We read the Sotkanet indicator definitions and six years of data. Four earlier s
 9. The first action for low screening was outreach to language groups. That assumed the cause. The first action is now to find who does not attend (measure 2.4.5).
 10. Update of 14 November, afternoon: three more assumptions were wrong, and the code now follows the items below.
 11. Bowel cancer: national screening started in 2022, and each survival value covers ten years of diagnoses. The rule no longer uses attendance for a bowel survival gap. The app says that the data cannot tell which step the gap comes from.
-12. Evidence: the count of years on the same side is a description only. The app now computes a rough 95% interval from patient counts. For Satakunta in 2024, the gap is 4 points and the interval is 6.5 to 1.5 points below Finland. The interval is our estimate, and the true interval is wider.
+12. Evidence: the count of years on the same side is a description only. The app now computes a rough 95% interval from patient counts. For Satakunta in 2024, the gap is 4 points and the interval is 6.3 to 1.7 points below Finland. The interval is our estimate, and the true interval is wider.
 13. Attendance: the Sotkanet figure counts the public programme only. A Finnish Cancer Registry study found mammograms outside the programme, most among upper-level employees (Fuhrmann and others, Acta Oncologica 2024). For breast cancer, the first action is now to find who has no mammogram at all.
 14. The lowest of 22 counties tends to look less extreme the next time it is measured. The page says so for the lowest county.
 
@@ -286,7 +286,7 @@ Questions for the mentors:
 3. Which county is a likely host for a follow-up project? What does its decision-maker need?
 4. Which cancers are the best focus for the demo?
 5. Is our pathway rule (screening against survival) sound to a clinician?
-6. Does the Cancer Registry publish stage at diagnosis per wellbeing services county?
+6. Does the Cancer Registry publish stage at diagnosis per wellbeing services county? Answered on 14 November 2026: no, for the whole country only. Its clinical notifications application shows how often the registry receives the stage summary per county: for bowel cancer in Satakunta, 1% to 7% of new cases each year in 2020 to 2024, against 35% to 43% in Finland.
 7. How much mammography in Helsinki happens outside the public programme?
 8. Does any register give the wait for each test before treatment per county: colonoscopy, scan, pathology?
 9. Is our reading right that a planning tool on county statistics is not a medical device?
@@ -318,6 +318,6 @@ Say three limits out loud. First, the timeline is one study of 160 lymphoma pati
 
 ## Still unknown
 
-1. Whether the Cancer Registry statistics app gives stage at diagnosis and case counts by county.
+1. Whether the Cancer Registry statistics app gives stage at diagnosis and case counts by county. Stage: national only (checked 14 November 2026).
 2. What the mentors answered on Friday. No interview notes are in the repository.
 3. What the AstraZeneca background pack adds. It is in Finnish, on the Junction platform.

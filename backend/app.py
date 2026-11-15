@@ -1,4 +1,4 @@
-"""Pathway Watch endpoints.
+"""Cancer Care Atlas endpoints.
 
     uv run uvicorn backend.app:app --port 8010
 """
@@ -18,28 +18,54 @@ from . import facts as F
 from . import nordcan
 from . import sotkanet
 from .analyst import summarize
+from .campaign import TARGET as SCREENING_TARGET, campaign
 from .channel import channel_table
 from .indicators import CANCERS, NATIONAL, has_county_survival
 from .priorities import ranking
 from .mortality import GOAL3, LABELS, all_years, shared as shared_mortality
 from .recommend import MEASURES, recommend
-from . import equity, timeline
+from . import equity, radiotherapy, timeline
+from .queues import county_queues, specialist_queues
 
 ROOT = Path(__file__).resolve().parent.parent
 WEB = ROOT / "web"
-SCREENING_TARGET = 80  # % attendance in every county, national cancer strategy, page 5
 GOAL3_SURVIVAL = ["lung", "pancreas", "liver"]  # the poor-prognosis cancers of Goal 3, indicator 1
 
 data = sotkanet.load()
 mort = shared_mortality()
 nc = nordcan.load()
 svf = json.loads((ROOT / "data" / "svf_sweden.json").read_text())
-app = FastAPI(title="Pathway Watch")
+app = FastAPI(title="Cancer Care Atlas")
+
+
+def _files_changed_at() -> float:
+    """When the newest backend or data file changed on disk."""
+    files = [*Path(__file__).resolve().parent.glob("*.py"), *(ROOT / "data").glob("*.json"), *(ROOT / "data" / "raw").glob("*.json")]
+    return max(f.stat().st_mtime for f in files)
+
+
+# The server loads its code and its data once. If a file changes later, the page still gets the old answers
+# next to a new index.html. `/api/meta` reports this, and the page asks for a restart.
+LOADED_AT = _files_changed_at()
 
 
 @app.get("/")
 def index():
     return FileResponse(WEB / "index.html")
+
+
+@app.get("/favicon.svg")
+def favicon():
+    return FileResponse(WEB / "favicon.svg", media_type="image/svg+xml")
+
+
+@app.get("/fonts/{name}")
+def font(name: str):
+    """The page's fonts, served from the repository so the demo needs no network."""
+    path = WEB / "fonts" / name
+    if path.parent != WEB / "fonts" or not path.is_file():
+        raise HTTPException(404, "unknown font")
+    return FileResponse(path, media_type="text/css" if name.endswith(".css") else "font/woff2")
 
 
 @app.get("/counties.geojson")
@@ -53,6 +79,7 @@ def meta():
         "counties": [{"code": c, "name": data.names[c]} for c in data.counties],
         "cancers": CANCERS,
         "sources": data.sources(),
+        "stale": _files_changed_at() > LOADED_AT,
     }
 
 
@@ -152,7 +179,13 @@ def headlines():
 def evidence():
     """National evidence that does not depend on the county: the step timeline of the lymphoma study,
     what a county pilot measures with it, and the register study on income and education."""
-    return {"timeline": timeline.build() | {"outcome": timeline.OUTCOME}, "pilot": timeline.PILOT, "equity": equity.build()}
+    return {
+        "timeline": timeline.build() | {"outcome": timeline.OUTCOME},
+        "pilot": timeline.PILOT,
+        "radiotherapy": radiotherapy.PILOT,
+        "radiotherapy_access": radiotherapy.access_all(data.counties),
+        "equity": equity.build(),
+    }
 
 
 @app.get("/api/national/{cancer}")
@@ -180,8 +213,12 @@ def _briefing(cancer: str, county: str) -> dict:
     recs = recommend(data, pathway, county)
     if pathway.step == "national":
         recs[0] = recs[0] | _counties_to_invite_first(cancer)
+    camp = campaign(data, cancer, county)
+    if recs:
+        recs[0] = recs[0] | {"here": _county_numbers(cancer, county, cases, camp)}
     facts = (F.survival_and_screening_facts(data, cancer, county) + F.mortality_facts(data, mort, cancer, county)
-             + F.nordic_facts(cancer, benchmark) + F.channel_facts(data, county) + F.pathway_and_action_facts(pathway, recs))
+             + F.nordic_facts(cancer, benchmark) + F.channel_facts(data, county) + F.registry_facts(data, cancer, county)
+             + F.pathway_and_action_facts(pathway, recs))
     view = _county_survival_view(cancer, county, cases) if has_county_survival(cancer) else _mortality_view(cancer, county, cases, benchmark)
     return {
         "county": {"code": county, "name": data.names[county]},
@@ -194,8 +231,12 @@ def _briefing(cancer: str, county: str) -> dict:
         **view,
         "goal3": _goal3(cancer, county),
         "channel": _channel(county),
+        "campaign": camp,
         "mirror": _mirror(cancer),
         "missing": _missing(cancer, cases),
+        "queues": county_queues(data, county),
+        "specialist_queues": specialist_queues(cancer, county),
+        "radiotherapy_access": radiotherapy.access(county),
     }
 
 
@@ -224,6 +265,26 @@ def _mortality_view(cancer: str, county: str, cases: dict, benchmark: dict) -> d
                        "period": benchmark["period"], "source": "nordcan", "target": benchmark["target"],
                        "steps": A.simulation_steps(cases["value"], benchmark["finland"], benchmark["nordic"])},
     }
+
+
+def _county_numbers(cancer: str, county: str, cases: dict, camp: dict) -> list[dict]:
+    """The size of the first action in this county: its patients, its deaths and the people the screening
+    programme did not reach. The roadmap measure is the same for many counties. These numbers are not."""
+    label = CANCERS[cancer]["label"].lower()
+    out = []
+    if cases["value"]:
+        out.append({"text": f"About {cases['value']:,} new {label} cases per year, an estimate from the age structure.",
+                    "source": cases["source"]})
+    if mort.ok:
+        m = mort.smr(cancer, county)
+        out.append({"text": f"{round(m.deaths_per_year):,} {label} deaths per year in {m.years[0]} to {m.years[-1]}: "
+                            f"SMR {m.smr}, 95% interval {m.low} to {m.high}.", "source": "statfin_mortality"})
+    size = camp.get("size")
+    if camp.get("status") == "campaign" and size:
+        out.append({"text": f"About {size['not_attended']:,} of about {size['invited']:,} invited people have no test in "
+                            f"the public screening programme. About {size['needed']:,} more tests reach the "
+                            f"{camp['target']}% target.", "source": camp["attendance_source"]})
+    return out
 
 
 def _counties_to_invite_first(cancer: str) -> dict:
@@ -270,7 +331,9 @@ def _missing(cancer: str, cases: dict) -> list[dict]:
     """What no public source gives, and the roadmap measure that would produce it."""
     out = [
         {"what": "Waiting times from referral to diagnosis and to treatment, per county",
-         "why": "Goal 3 indicator 3 asks for treatment within target times. No public source gives them per county.",
+         "why": "Goal 3 indicator 3 asks for treatment within target times. No public source gives them per county for cancer. "
+                "THL publishes the non-urgent queue of each specialty per county, and the Delays view shows it, but a "
+                "cancer referral is often urgent and then not in that queue.",
          "measure": "3.1.4", "source": "thl_21_2016"},
         {"what": "Waiting time for each test before treatment, per county: endoscopy, scan and pathology",
          "why": "A tissue sample shows that a growth is cancer, and a scan shows its spread. Treatment waits for both. In a survey "
@@ -300,6 +363,6 @@ def _missing(cancer: str, cases: dict) -> list[dict]:
                     "measure": None, "source": "nordcan"})
     if cases["status"] == "estimate":
         out.append({"what": "New cases per year per county",
-                    "why": "The simulation splits the national count by population share.",
+                    "why": "The app splits the national count by the county's age structure. " + cases.get("limit", ""),
                     "measure": None, "source": "cancer_registry"})
     return out

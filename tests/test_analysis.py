@@ -149,7 +149,41 @@ def test_simulation_steps_cover_the_slider_and_agree_with_simulate():
     assert A.simulation_steps(None, 63, 68) is None
 
 
-def test_estimated_cases_split_by_population_share():
+def test_estimated_cases_use_the_age_share_and_fall_back_to_the_population_share():
     c = A.estimated_cases(make({}), "09", 1000, "test", "nordcan")
-    assert c["value"] == 100 and c["status"] == "estimate"
+    assert (c["value"], c["status"], c["basis"]) == (100, "estimate", "population")
+    assert "ignores the age structure" in c["limit"]
+    aged = A.estimated_cases(make({}), "09", 1000, "test", "nordcan", age_share=0.13)
+    assert (aged["value"], aged["basis"]) == (130, "age structure")
+    assert "13.0%" in aged["method"] and "10.0%" in aged["method"] and "stands in" in aged["limit"]
     assert A.estimated_cases(make({}), "09", None, "test", "nordcan")["value"] is None
+
+
+def test_the_strict_interval_of_a_hand_made_case():
+    """Standard error 5.02 points: 1.96 of them is 9.8, and the limit for 22 comparisons (3.05) is 15.3."""
+    iv = A.rough_interval(50, 60, 10, comparisons=22)
+    assert (iv.low, iv.high, iv.excludes_zero) == (-19.8, -0.2, True)
+    assert (iv.strict_low, iv.strict_high, iv.strict_excludes_zero) == (-25.3, 5.3, False)
+    one = A.rough_interval(50, 60, 10)
+    assert (one.strict_low, one.strict_high) == (one.low, one.high)  # one comparison: the same limit
+
+
+def test_a_survival_gap_is_read_against_deaths_from_the_same_cancer():
+    """The cached Statistics Finland deaths: Satakunta has extra bowel cancer deaths, Päijät-Häme does not,
+    and North Karelia has too few cervical cancer deaths for an SMR to confirm anything."""
+    assert A.deaths_check("bowel", "06")[0] == "agree"
+    status, sentence = A.deaths_check("bowel", "09")
+    assert status == "not_confirmed" and "stage at diagnosis" in sentence
+    assert A.deaths_check("cervical", "14")[0] == "too_few"
+    assert A.deaths_check("prostate", "09") is None
+    from backend.sotkanet import load
+    p = A.locate(load(), "bowel", "09")
+    assert p.deaths == "not_confirmed" and any(c.startswith("Deaths do not confirm") for c in p.caveats)
+
+
+def test_the_lung_screening_pilot_is_not_judged_by_survival():
+    """Screening moves a diagnosis earlier, so five-year survival rises with no death avoided (lead time)."""
+    from backend.recommend import MEASURES
+    success = MEASURES["2.3.4"]["success"]
+    assert "stage I or II" in success and "deaths" in success
+    assert not success.startswith("Five-year")
