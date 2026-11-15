@@ -1,6 +1,6 @@
 # Handbook: Cancer Care Atlas
 
-This handbook explains the AstraZeneca entry to anyone on the team. The build brief is `../PATHWAY_PLAN.md`.
+This handbook explains the AstraZeneca entry to anyone on the team. The build brief is `PATHWAY_PLAN.md`.
 
 ## What it is
 
@@ -10,7 +10,7 @@ The design rule: code computes every number. If a number in a sentence is not in
 
 ## The map
 
-![Two maps of Finnish counties in 2024](../docs/handbook/pathway-maps.svg)
+![Two maps of Finnish counties in 2024](docs/handbook/pathway-maps.svg)
 
 | Finding | Value | Years |
 |---|---|---|
@@ -26,7 +26,7 @@ The lowest of 22 counties tends to look less extreme the next time it is measure
 
 ## Why the app asks questions and does not name causes
 
-![Satakunta against Finland, 2019 to 2024](../docs/handbook/pathway-satakunta.svg)
+![Satakunta against Finland, 2019 to 2024](docs/handbook/pathway-satakunta.svg)
 
 Survival in the app is the five-year relative survival of Sotkanet, standardised by age. It compares the patients with people of the same age in the region. Each survival value covers patients diagnosed in that year and the nine years before. Two neighboring years share most of their patients. So the app does not average years, and it does not call agreement between years "confidence".
 
@@ -36,7 +36,7 @@ The app compares 22 counties with Finland. So about one 95% interval excludes ze
 
 This interval is our estimate, and the true interval is wider. Sotkanet publishes no interval. Relative survival varies more than a plain share. The county case count is an estimate: the national count times the county's share by age structure. Satakunta holds 3.7% of the people and 4.6% of the bowel cancer deaths that its age structure predicts, so the app gives it 4.6% of the cases. The age pattern of deaths stands in for the age pattern of new cases, and patients die at an older age than they are diagnosed. So the estimate is somewhat high for an old county. The page says all of this next to the number. The count "below in 6 of 6 years" stays on the page as a description only.
 
-![The care pathway and its public data](../docs/handbook/pathway-care-path.svg)
+![The care pathway and its public data](docs/handbook/pathway-care-path.svg)
 
 The pathway rule compares counties, not patients. For breast and cervical cancer, low survival with low attendance in the public screening programme raises a question about detection. Low survival with normal attendance raises a question about the later steps. Public data cannot tell the later steps apart, and the app says so.
 
@@ -64,7 +64,7 @@ Patient-level register data needs a permit from Findata, the Finnish permit auth
 
 ## How a number reaches the page
 
-![From the open source to the page](../docs/handbook/pathway-flow.svg)
+![From the open source to the page](docs/handbook/pathway-flow.svg)
 
 ## Run it
 
@@ -121,7 +121,7 @@ The rule for go: at least 95% of the dates are present, the slowest step holds a
 
 ## The deck and links to one view
 
-The deck is a PDF in `docs/decks/`: `../docs/decks/AstraZeneca - Cancer Care Atlas.pdf`. Build it with `python3 ../docs/decks/pathway_deck.py` while the app runs on port 8011. The script reads every number from the app's API and takes every picture from the running app, so the deck cannot show a value or a screen that the demo does not. Build it again after each change to the app.
+The deck is a PDF in `docs/decks/`: `docs/decks/AstraZeneca - Cancer Care Atlas.pdf`. Build it with `python3 docs/decks/pathway_deck.py` while the app runs on port 8011. The script reads every number from the app's API and takes every picture from the running app, so the deck cannot show a value or a screen that the demo does not. Build it again after each change to the app.
 
 A link can open one state of the app, for example `http://localhost:8011/?cancer=bowel&county=06&view=act&part=Screening%20campaign&theme=light`. The parts of the link are `cancer`, `county` (the county code), `view`, `part`, `layer` and `theme`. Use such links in the demo so that a reload always shows the same page.
 

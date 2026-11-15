@@ -1,6 +1,6 @@
 # Cancer Care Atlas
 
-Cancer Care Atlas is for a decision-maker in a wellbeing services county. It shows where cancer patients do worse than elsewhere in Finland and which step of the care pathway to ask about. It also shows which roadmap measure to act on first. Read `HANDBOOK.md` for an explanation with maps. The build brief is `../PATHWAY_PLAN.md`.
+Cancer Care Atlas is for a decision-maker in a wellbeing services county. It shows where cancer patients do worse than elsewhere in Finland and which step of the care pathway to ask about. It also shows which roadmap measure to act on first. Read `HANDBOOK.md` for an explanation with maps. The build brief is `PATHWAY_PLAN.md`.
 
 ## In brief
 
